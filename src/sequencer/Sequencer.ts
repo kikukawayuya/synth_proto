@@ -17,7 +17,7 @@ export interface Step {
 export class Sequencer {
     private synth: SynthEngine;
     private steps: Step[] = [];
-    private length: 16 | 32 | 64 = 16;
+    private length: 16 | 32 | 64 | 128 = 16;
     private bpm: number = 120;
     private swing: number = 0; // 0-100
     private humanize = { timing: 0, velocity: 0 };
@@ -36,7 +36,7 @@ export class Sequencer {
 
     private initSteps(): void {
         this.steps = [];
-        for (let i = 0; i < 64; i++) {
+        for (let i = 0; i < 128; i++) {
             this.steps.push({
                 note: -1,
                 velocity: 100,
@@ -74,7 +74,7 @@ export class Sequencer {
     /**
      * Set sequence length
      */
-    setLength(length: 16 | 32 | 64): void {
+    setLength(length: 16 | 32 | 64 | 128): void {
         this.length = length;
     }
 

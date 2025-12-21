@@ -310,7 +310,13 @@
                     <h2 class="panel-title">Effects</h2>
                     <div class="fx-container">
                         <div class="fx-unit">
-                            <h3>Chorus</h3>
+                            <div class="fx-header">
+                                <h3>Chorus</h3>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" checked data-param="chorusEnabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
                             <div class="fx-knobs">
                                 <div class="knob-group">
                                     <input type="range" class="knob" data-param="chorusRate" min="0.1" max="4"
@@ -330,7 +336,13 @@
                             </div>
                         </div>
                         <div class="fx-unit fx-unit-large">
-                            <h3>Long Reverb</h3>
+                            <div class="fx-header">
+                                <h3>Long Reverb</h3>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" checked data-param="longReverbEnabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
                             <div class="fx-knobs">
                                 <div class="knob-group">
                                     <input type="range" class="knob large" data-param="longReverbDecay" min="1" max="30"
@@ -380,6 +392,7 @@
                                 <option value="16" selected>16 Steps</option>
                                 <option value="32">32 Steps</option>
                                 <option value="64">64 Steps</option>
+                                <option value="128">128 Steps (32 Bars)</option>
                             </select>
                             <div class="swing-control">
                                 <label>Swing</label>

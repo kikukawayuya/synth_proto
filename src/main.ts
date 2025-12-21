@@ -68,6 +68,11 @@ async function init() {
             setupKeyboard();
             setupPianoRoll();
             setupSequencerControls();
+            setupRotaryKnobs();
+            setupToggles();
+            setupKeyboard();
+            setupPianoRoll();
+            setupSequencerControls();
             setupPresets();
             setupVisualizer();
 
@@ -118,6 +123,21 @@ function setupRotaryKnobs(): void {
         // Remove original input and label
         htmlInput.remove();
         existingLabel?.remove();
+    });
+}
+
+/**
+ * Setup toggle switches
+ */
+function setupToggles(): void {
+    document.querySelectorAll('.toggle-switch input[type="checkbox"]').forEach((input) => {
+        const checkbox = input as HTMLInputElement;
+        const paramName = checkbox.dataset.param;
+        if (!paramName) return;
+
+        checkbox.addEventListener('change', () => {
+            synth.setParam(paramName, checkbox.checked);
+        });
     });
 }
 
@@ -247,7 +267,7 @@ function setupSequencerControls(): void {
 
     // Length change
     lengthSelect?.addEventListener('change', () => {
-        sequencer.setLength(parseInt(lengthSelect.value) as 16 | 32 | 64);
+        sequencer.setLength(parseInt(lengthSelect.value) as 16 | 32 | 64 | 128);
         pianoRoll?.update();
     });
 
@@ -311,6 +331,8 @@ function setupVisualizer() {
     // Draw loop
     function draw() {
         requestAnimationFrame(draw);
+
+        if (!ctx) return;
 
         const analyser = synth.getAnalyser();
         if (!analyser) {

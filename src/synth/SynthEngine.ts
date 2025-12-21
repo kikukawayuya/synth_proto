@@ -306,7 +306,7 @@ export class SynthEngine {
     /**
      * Set a single parameter
      */
-    setParam(name: string, value: number | string): void {
+    setParam(name: string, value: number | string | boolean): void {
         this.currentParams[name] = value;
 
         // Apply to effects in real-time
@@ -314,6 +314,7 @@ export class SynthEngine {
             if (name === 'chorusRate') this.chorus.setRate(value as number);
             if (name === 'chorusDepth') this.chorus.setDepth(value as number);
             if (name === 'chorusMix') this.chorus.setMix(value as number);
+            if (name === 'chorusEnabled') this.chorus.setEnabled(value as boolean);
         }
 
         if (name.startsWith('reverb') && this.reverb) {
@@ -329,6 +330,7 @@ export class SynthEngine {
             if (name === 'longReverbDamping') this.longReverb.setDamping(value as number);
             if (name === 'longReverbDryWet') this.longReverb.setDryWet(value as number);
             if (name === 'longReverbWidth') this.longReverb.setStereoWidth(value as number);
+            if (name === 'longReverbEnabled') this.longReverb.setEnabled(value as boolean);
         }
     }
 

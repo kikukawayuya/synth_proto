@@ -20,6 +20,8 @@ export class Chorus {
     private _rate: number = 0.5;
     private _depth: number = 0.3;
     private _mix: number = 0.1;
+    private _enabled: boolean = true;
+    private bypassGain: GainNode | null = null;
 
     constructor(audioContext: AudioContext) {
         this.audioContext = audioContext;
@@ -108,10 +110,31 @@ export class Chorus {
 
     setMix(mix: number): void {
         this._mix = mix;
+        if (!this._enabled) return; // Don't apply when disabled
         const now = this.audioContext.currentTime;
         this.dryGain.gain.setTargetAtTime(1 - mix, now, 0.01);
         this.wetGainL.gain.setTargetAtTime(mix, now, 0.01);
         this.wetGainR.gain.setTargetAtTime(mix, now, 0.01);
+    }
+
+    setEnabled(enabled: boolean): void {
+        this._enabled = enabled;
+        const now = this.audioContext.currentTime;
+        if (enabled) {
+            // Apply current mix
+            this.dryGain.gain.setTargetAtTime(1 - this._mix, now, 0.01);
+            this.wetGainL.gain.setTargetAtTime(this._mix, now, 0.01);
+            this.wetGainR.gain.setTargetAtTime(this._mix, now, 0.01);
+        } else {
+            // Full dry (bypass)
+            this.dryGain.gain.setTargetAtTime(1, now, 0.01);
+            this.wetGainL.gain.setTargetAtTime(0, now, 0.01);
+            this.wetGainR.gain.setTargetAtTime(0, now, 0.01);
+        }
+    }
+
+    isEnabled(): boolean {
+        return this._enabled;
     }
 
     destroy(): void {

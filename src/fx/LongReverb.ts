@@ -46,6 +46,9 @@ export class LongReverb {
         stereoWidth: 0.8
     };
 
+    // Enabled state
+    private _enabled: boolean = true;
+
     // IR generation state
     private isGenerating: boolean = false;
     private irBuffer: AudioBuffer | null = null;
@@ -380,5 +383,31 @@ export class LongReverb {
      */
     disconnect(): void {
         this.output.disconnect();
+    }
+
+    /**
+     * Enable/disable reverb (bypass)
+     */
+    setEnabled(enabled: boolean): void {
+        this._enabled = enabled;
+        const now = this.ctx.currentTime;
+
+        if (enabled) {
+            // Apply current mix
+            const wet = this.params.dryWet;
+            this.dryGain.gain.setTargetAtTime(1 - wet, now, 0.05);
+            this.wetGain.gain.setTargetAtTime(wet, now, 0.05);
+        } else {
+            // Full dry (bypass)
+            this.dryGain.gain.setTargetAtTime(1, now, 0.05);
+            this.wetGain.gain.setTargetAtTime(0, now, 0.05);
+        }
+    }
+
+    /**
+     * Check if reverb is enabled
+     */
+    isEnabled(): boolean {
+        return this._enabled;
     }
 }

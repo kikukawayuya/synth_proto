@@ -22,7 +22,7 @@ interface SelectedNote {
     note: number;
 }
 
-type EditMode = 'none' | 'select' | 'duration' | 'velocity' | 'draw';
+type EditMode = 'none' | 'select' | 'duration' | 'velocity' | 'move' | 'draw';
 
 export class PianoRoll {
     private container: HTMLElement;
@@ -51,6 +51,8 @@ export class PianoRoll {
     private scrollLeft: number = 0;
     private scrollTop: number = 0;
     private lastClickTime: number = 0;
+    private dragStartStep: number = 0;
+    private dragStartNote: number = 0;
 
     // Colors (Logic Pro style)
     private colors = {
@@ -216,9 +218,12 @@ export class PianoRoll {
                 this.dragStartX = x;
                 this.dragStartValue = existingNote.gate;
             } else {
-                // Otherwise, velocity mode (up/down drag)
-                this.editMode = 'velocity';
+                // Otherwise, move mode (drag to new position)
+                this.editMode = 'move';
+                this.dragStartX = x;
                 this.dragStartY = y;
+                this.dragStartStep = existingNote.step;
+                this.dragStartNote = existingNote.note;
                 this.dragStartValue = existingNote.velocity;
             }
 
@@ -269,18 +274,33 @@ export class PianoRoll {
                 if (this.onNoteChange) {
                     this.onNoteChange(this.selectedNote.step, this.selectedNote.note, { gate: newGate });
                 }
-            } else if (this.editMode === 'velocity') {
-                // Adjust velocity
-                const deltaY = this.dragStartY - y; // Inverted: up = increase
-                const velocityChange = deltaY * 1.5; // Sensitivity
-                let newVelocity = Math.round(this.dragStartValue + velocityChange);
-                newVelocity = Math.max(1, Math.min(127, newVelocity));
+            } else if (this.editMode === 'move') {
+                // Move note to new position
+                const newStep = Math.max(0, Math.min(this.sequencer.getLength() - 1, step));
+                const newNote = Math.max(this.minNote, Math.min(this.maxNote, note));
 
-                this.sequencer.setStep(this.selectedNote.step, { velocity: newVelocity });
-                this.render();
+                // Only move if position actually changed
+                if (newStep !== this.selectedNote.step || newNote !== stepData.note) {
+                    // Save old note data
+                    const oldData = { ...stepData };
 
-                if (this.onNoteChange) {
-                    this.onNoteChange(this.selectedNote.step, this.selectedNote.note, { velocity: newVelocity });
+                    // Clear old position
+                    this.sequencer.setStep(this.selectedNote.step, { note: -1 });
+
+                    // Set new position
+                    this.sequencer.setStep(newStep, {
+                        note: newNote,
+                        velocity: oldData.velocity,
+                        gate: oldData.gate
+                    });
+
+                    // Update selection
+                    this.selectedNote = { step: newStep, note: newNote };
+                    this.render();
+
+                    if (this.onNoteChange) {
+                        this.onNoteChange(newStep, newNote, {});
+                    }
                 }
             }
         }
