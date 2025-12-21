@@ -5,6 +5,7 @@
 
 import { Chorus } from '../fx/Chorus';
 import { Reverb } from '../fx/Reverb';
+import { LongReverb, LongReverbParams } from '../fx/LongReverb';
 import { EQ } from '../fx/EQ';
 import { Preset, presetToParams, ES2_PURITY_PRESET } from './Preset';
 
@@ -29,6 +30,7 @@ export class SynthEngine {
     // Effects
     private chorus: Chorus | null = null;
     private reverb: Reverb | null = null;
+    private longReverb: LongReverb | null = null;
     private eq: EQ | null = null;
 
     // Current parameters
@@ -57,12 +59,13 @@ export class SynthEngine {
         this.eq = new EQ(this.audioContext);
         this.chorus = new Chorus(this.audioContext);
         this.reverb = new Reverb(this.audioContext);
+        this.longReverb = new LongReverb(this.audioContext);
 
-        // Connect: voices -> EQ -> Chorus -> Reverb -> Master -> Analyser -> Destination
+        // Connect: voices -> EQ -> Chorus -> LongReverb -> Master -> Analyser -> Destination
         this.voiceMixer.connect(this.eq.getInput());
         this.eq.getOutput().connect(this.chorus.getInput());
-        this.chorus.getOutput().connect(this.reverb.getInput());
-        this.reverb.getOutput().connect(this.masterGain);
+        this.chorus.getOutput().connect(this.longReverb.getInput());
+        this.longReverb.getOutput().connect(this.masterGain);
         this.masterGain.connect(this.analyser);
         this.analyser.connect(this.audioContext.destination);
 
@@ -317,6 +320,15 @@ export class SynthEngine {
             if (name === 'reverbDecay') this.reverb.setDecay(value as number);
             if (name === 'reverbMix') this.reverb.setMix(value as number);
             if (name === 'reverbLowCut') this.reverb.setLowCut(value as number);
+        }
+
+        // Long Reverb parameters
+        if (name.startsWith('longReverb') && this.longReverb) {
+            if (name === 'longReverbDecay') this.longReverb.setDecayTime(value as number);
+            if (name === 'longReverbPreDelay') this.longReverb.setPreDelay(value as number);
+            if (name === 'longReverbDamping') this.longReverb.setDamping(value as number);
+            if (name === 'longReverbDryWet') this.longReverb.setDryWet(value as number);
+            if (name === 'longReverbWidth') this.longReverb.setStereoWidth(value as number);
         }
     }
 
