@@ -1,0 +1,158 @@
+{
+    "name": "ES2 Purity (approx v1)",
+    "version": 1,
+    "engine": "web-synth-v1",
+    "synth": {
+        "polyphony": 12,
+        "voiceSteal": "oldest",
+        "glide": {
+            "enabled": false,
+            "timeSec": 0.0
+        },
+        "oscillators": [
+            {
+                "id": "osc1",
+                "wave": "sine",
+                "octave": 0,
+                "semitone": 0,
+                "fineCents": -9,
+                "level": 1.0,
+                "pan": 0.0
+            },
+            {
+                "id": "osc2",
+                "wave": "sine",
+                "octave": 0,
+                "semitone": 12,
+                "fineCents": -1,
+                "level": 0.8,
+                "pan": 0.0,
+                "ringMod": {
+                    "enabled": true,
+                    "amount": 0.08
+                }
+            },
+            {
+                "id": "osc3",
+                "wave": "sine",
+                "octave": 0,
+                "semitone": 0,
+                "fineCents": 10,
+                "level": 0.55,
+                "pan": 0.0
+            }
+        ],
+        "noise": {
+            "enabled": true,
+            "type": "pink",
+            "level": 0.04,
+            "postFilter": true
+        },
+        "mixer": {
+            "preFilterGain": 1.0
+        },
+        "filter": {
+            "topology": "ladder_lp24",
+            "cutoffNorm": 0.42,
+            "resonanceNorm": 0.12,
+            "drive": 0.04,
+            "keyTrack": 0.5,
+            "envAmount": 0.18
+        },
+        "ampEnv": {
+            "attackSec": 1.5,
+            "decaySec": 2.5,
+            "sustain": 0.4,
+            "releaseSec": 2.0
+        },
+        "filterEnv": {
+            "attackSec": 1.4,
+            "decaySec": 4.2,
+            "sustain": 0.4,
+            "releaseSec": 2.0
+        },
+        "lfos": [
+            {
+                "id": "lfo1",
+                "shape": "sine",
+                "sync": false,
+                "rateHz": 1.9,
+                "depth": 1.0
+            },
+            {
+                "id": "lfo2",
+                "shape": "sine",
+                "sync": true,
+                "rateDiv": "1/1",
+                "depth": 1.0
+            }
+        ],
+        "modMatrix": [
+            {
+                "source": "velocity",
+                "target": "filter.cutoff",
+                "amount": 0.10,
+                "smoothingMs": 20
+            },
+            {
+                "source": "env.filter",
+                "target": "filter.cutoff",
+                "amount": 0.18,
+                "smoothingMs": 20
+            },
+            {
+                "source": "lfo2",
+                "target": "pan",
+                "amount": 0.10,
+                "smoothingMs": 50
+            },
+            {
+                "source": "lfo2",
+                "target": "osc.detuneCentsAll",
+                "amount": 3.0,
+                "smoothingMs": 50
+            },
+            {
+                "source": "lfo2",
+                "target": "filter.cutoff",
+                "amount": 0.03,
+                "smoothingMs": 50
+            },
+            {
+                "source": "modwheel",
+                "target": "filter.cutoff",
+                "amount": 0.12,
+                "smoothingMs": 30
+            }
+        ]
+    },
+    "fx": {
+        "distortion": {
+            "enabled": true,
+            "type": "soft",
+            "drive": 0.10,
+            "mix": 0.12
+        },
+        "chorus": {
+            "enabled": true,
+            "rateHz": 0.25,
+            "depth": 0.25,
+            "mix": 0.18
+        },
+        "reverb": {
+            "enabled": true,
+            "type": "algo",
+            "decaySec": 8.0,
+            "preDelayMs": 20,
+            "lowCutHz": 250,
+            "highCutHz": 9000,
+            "mix": 0.12
+        },
+        "eq": {
+            "enabled": true,
+            "highPassHz": 140,
+            "lowShelfHz": 120,
+            "lowShelfDb": -1.5
+        }
+    }
+}

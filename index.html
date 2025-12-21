@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ES2 Purity-style soft pad synthesizer with 16-64 step sequencer">
+    <title>ES2 Purity Web Synth</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app">
+        <!-- Header - ES2 Title Bar -->
+        <header class="header">
+            <div class="header-left">
+                <span class="power-btn" id="power-indicator">⏻</span>
+                <h1 class="logo">ES2 Purity</h1>
+            </div>
+            <div class="transport">
+                <button id="start-audio" class="btn btn-primary">
+                    ▶ Start Audio
+                </button>
+                <div class="bpm-control">
+                    <label>BPM</label>
+                    <input type="number" id="bpm" value="120" min="20" max="300">
+                </div>
+                <div class="preset-selector">
+                    <select id="preset-select">
+                        <option value="purity">Purity</option>
+                        <option value="init">Init</option>
+                    </select>
+                    <button id="preset-load" class="btn btn-small">Load</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Synth Interface -->
+        <main class="main-content">
+
+            <!-- Top Row: Oscillators + Filter -->
+            <section class="synth-section">
+
+                <!-- Oscillators Panel (ES2 Style 3-circle layout) -->
+                <div class="panel oscillators-panel">
+                    <h2 class="panel-title">Oscillators</h2>
+                    <div class="osc-container">
+                        <!-- OSC 1 -->
+                        <div class="osc-circle" data-osc="1">
+                            <div class="osc-number">1</div>
+                            <div class="osc-inner">
+                                <select class="osc-wave" data-param="osc1Wave">
+                                    <option value="sine" selected>sine</option>
+                                    <option value="triangle">tri</option>
+                                    <option value="saw">saw</option>
+                                    <option value="square">square</option>
+                                </select>
+                                <div class="osc-knobs">
+                                    <div class="knob-group">
+                                        <input type="range" class="knob" data-param="osc1Level" min="0" max="1"
+                                            step="0.01" value="1">
+                                        <span class="knob-label">Level</span>
+                                    </div>
+                                    <div class="knob-group">
+                                        <input type="range" class="knob" data-param="osc1Detune" min="-50" max="50"
+                                            step="1" value="-9">
+                                        <span class="knob-label">Tune</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OSC 2 -->
+                        <div class="osc-circle" data-osc="2">
+                            <div class="osc-number">2</div>
+                            <div class="osc-inner">
+                                <select class="osc-wave" data-param="osc2Wave">
+                                    <option value="sine" selected>sine</option>
+                                    <option value="triangle">tri</option>
+                                    <option value="saw">saw</option>
+                                    <option value="square">square</option>
+                                </select>
+                                <div class="osc-knobs">
+                                    <div class="knob-group">
+                                        <input type="range" class="knob" data-param="osc2Level" min="0" max="1"
+                                            step="0.01" value="0.8">
+                                        <span class="knob-label">Level</span>
+                                    </div>
+                                    <div class="knob-group">
+                                        <input type="range" class="knob" data-param="osc2Detune" min="-50" max="50"
+                                            step="1" value="-1">
+                                        <span class="knob-label">Tune</span>
+                                    </div>
+                                </div>
+                                <div class="osc-extra">
+                                    <label><input type="checkbox" data-param="osc2Ring"> Ring</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OSC 3 -->
+                        <div class="osc-circle" data-osc="3">
+                            <div class="osc-number">3</div>
+                            <div class="osc-inner">
+                                <select class="osc-wave" data-param="osc3Wave">
+                                    <option value="sine" selected>sine</option>
+                                    <option value="triangle">tri</option>
+                                    <option value="saw">saw</option>
+                                    <option value="square">square</option>
+                                </select>
+                                <div class="osc-knobs">
+                                    <div class="knob-group">
+                                        <input type="range" class="knob" data-param="osc3Level" min="0" max="1"
+                                            step="0.01" value="0.55">
+                                        <span class="knob-label">Level</span>
+                                    </div>
+                                    <div class="knob-group">
+                                        <input type="range" class="knob" data-param="osc3Detune" min="-50" max="50"
+                                            step="1" value="10">
+                                        <span class="knob-label">Tune</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Noise (small) -->
+                        <div class="noise-unit">
+                            <h3>Noise</h3>
+                            <select data-param="noiseType">
+                                <option value="off">Off</option>
+                                <option value="pink" selected>Pink</option>
+                                <option value="brown">Brown</option>
+                            </select>
+                            <div class="knob-group small">
+                                <input type="range" class="knob" data-param="noiseLevel" min="0" max="0.2" step="0.01"
+                                    value="0.04">
+                                <span class="knob-label">Level</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Panel (ES2 Center Section) -->
+                <div class="panel filter-panel">
+                    <h2 class="panel-title">Filter</h2>
+                    <div class="filter-main">
+                        <div class="filter-type-selector">
+                            <select data-param="filterType">
+                                <option value="lp24" selected>LP 24dB</option>
+                                <option value="lp12">LP 12dB</option>
+                                <option value="bp">BP</option>
+                                <option value="hp">HP</option>
+                            </select>
+                        </div>
+                        <div class="filter-knobs">
+                            <div class="knob-group large">
+                                <input type="range" class="knob large" data-param="filterCutoff" min="20" max="16000"
+                                    step="1" value="800">
+                                <span class="knob-label">Cutoff</span>
+                            </div>
+                            <div class="knob-group">
+                                <input type="range" class="knob" data-param="filterRes" min="0" max="1" step="0.01"
+                                    value="0.12">
+                                <span class="knob-label">Res</span>
+                            </div>
+                            <div class="knob-group">
+                                <input type="range" class="knob" data-param="filterEnvAmount" min="0" max="1"
+                                    step="0.01" value="0.18">
+                                <span class="knob-label">Env</span>
+                            </div>
+                            <div class="knob-group">
+                                <input type="range" class="knob" data-param="filterKeyTrack" min="0" max="1" step="0.01"
+                                    value="0.5">
+                                <span class="knob-label">Key</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Envelopes (ES2 right side sliders) -->
+                <div class="panel envelopes-panel">
+                    <h2 class="panel-title">Envelopes</h2>
+                    <div class="env-container">
+                        <!-- Amp Envelope -->
+                        <div class="env-unit">
+                            <h3>AMP</h3>
+                            <div class="slider-row">
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="ampAttack" min="0.001"
+                                        max="8" step="0.01" value="1.5" orient="vertical">
+                                    <span>A</span>
+                                </div>
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="ampDecay" min="0.001"
+                                        max="8" step="0.01" value="2.5" orient="vertical">
+                                    <span>D</span>
+                                </div>
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="ampSustain" min="0" max="1"
+                                        step="0.01" value="0.4" orient="vertical">
+                                    <span>S</span>
+                                </div>
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="ampRelease" min="0.001"
+                                        max="12" step="0.01" value="2.0" orient="vertical">
+                                    <span>R</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Filter Envelope -->
+                        <div class="env-unit">
+                            <h3>FILTER</h3>
+                            <div class="slider-row">
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="filterAttack" min="0.001"
+                                        max="8" step="0.01" value="1.4" orient="vertical">
+                                    <span>A</span>
+                                </div>
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="filterDecay" min="0.001"
+                                        max="8" step="0.01" value="4.2" orient="vertical">
+                                    <span>D</span>
+                                </div>
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="filterSustain" min="0"
+                                        max="1" step="0.01" value="0.4" orient="vertical">
+                                    <span>S</span>
+                                </div>
+                                <div class="slider-group">
+                                    <input type="range" class="slider vertical" data-param="filterRelease" min="0.001"
+                                        max="12" step="0.01" value="2.0" orient="vertical">
+                                    <span>R</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Middle Row: LFOs + FX -->
+            <section class="synth-section">
+                <!-- LFO Panel -->
+                <div class="panel lfo-panel">
+                    <h2 class="panel-title">LFO</h2>
+                    <div class="lfo-container">
+                        <div class="lfo-unit">
+                            <div class="lfo-header">
+                                <span class="lfo-label">LFO1</span>
+                                <select data-param="lfo1Wave">
+                                    <option value="sine" selected>∿</option>
+                                    <option value="triangle">△</option>
+                                    <option value="saw">⊿</option>
+                                    <option value="square">□</option>
+                                    <option value="sh">S&H</option>
+                                </select>
+                            </div>
+                            <div class="lfo-knobs">
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="lfo1Rate" min="0.01" max="20"
+                                        step="0.01" value="1.9">
+                                    <span class="knob-label">Rate</span>
+                                </div>
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="lfo1Amount" min="0" max="1" step="0.01"
+                                        value="0.15">
+                                    <span class="knob-label">Depth</span>
+                                </div>
+                            </div>
+                            <select class="lfo-target" data-param="lfo1Target">
+                                <option value="pan" selected>→ Pan</option>
+                                <option value="pitch">→ Pitch</option>
+                                <option value="filter">→ Filter</option>
+                            </select>
+                        </div>
+                        <div class="lfo-unit">
+                            <div class="lfo-header">
+                                <span class="lfo-label">LFO2</span>
+                                <select data-param="lfo2Wave">
+                                    <option value="sine" selected>∿</option>
+                                    <option value="triangle">△</option>
+                                    <option value="saw">⊿</option>
+                                    <option value="square">□</option>
+                                    <option value="sh">S&H</option>
+                                </select>
+                            </div>
+                            <div class="lfo-knobs">
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="lfo2Rate" min="0.01" max="20"
+                                        step="0.01" value="0.5">
+                                    <span class="knob-label">Rate</span>
+                                </div>
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="lfo2Amount" min="0" max="1" step="0.01"
+                                        value="0.1">
+                                    <span class="knob-label">Depth</span>
+                                </div>
+                            </div>
+                            <select class="lfo-target" data-param="lfo2Target">
+                                <option value="filter" selected>→ Filter</option>
+                                <option value="pitch">→ Pitch</option>
+                                <option value="pan">→ Pan</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Effects Panel -->
+                <div class="panel fx-panel">
+                    <h2 class="panel-title">Effects</h2>
+                    <div class="fx-container">
+                        <div class="fx-unit">
+                            <h3>Chorus</h3>
+                            <div class="fx-knobs">
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="chorusRate" min="0.1" max="4"
+                                        step="0.1" value="0.25">
+                                    <span class="knob-label">Rate</span>
+                                </div>
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="chorusDepth" min="0" max="1"
+                                        step="0.01" value="0.25">
+                                    <span class="knob-label">Depth</span>
+                                </div>
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="chorusMix" min="0" max="0.5"
+                                        step="0.01" value="0.18">
+                                    <span class="knob-label">Mix</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fx-unit">
+                            <h3>Reverb</h3>
+                            <div class="fx-knobs">
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="reverbDecay" min="0.5" max="12"
+                                        step="0.1" value="8">
+                                    <span class="knob-label">Decay</span>
+                                </div>
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="reverbMix" min="0" max="0.5"
+                                        step="0.01" value="0.12">
+                                    <span class="knob-label">Mix</span>
+                                </div>
+                                <div class="knob-group">
+                                    <input type="range" class="knob" data-param="reverbLowCut" min="50" max="800"
+                                        step="10" value="250">
+                                    <span class="knob-label">Lo Cut</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Keyboard -->
+            <section class="keyboard-section">
+                <div id="keyboard" class="keyboard"></div>
+            </section>
+
+            <!-- Piano Roll Editor -->
+            <section class="sequencer-section">
+                <div class="panel sequencer-panel piano-roll-panel">
+                    <div class="sequencer-header">
+                        <h2 class="panel-title">Piano Roll</h2>
+                        <div class="sequencer-controls">
+                            <button id="seq-play" class="btn btn-small">▶ Play</button>
+                            <button id="seq-stop" class="btn btn-small">■ Stop</button>
+                            <select id="seq-length">
+                                <option value="16" selected>16 Steps</option>
+                                <option value="32">32 Steps</option>
+                                <option value="64">64 Steps</option>
+                            </select>
+                            <div class="swing-control">
+                                <label>Swing</label>
+                                <input type="range" id="seq-swing" min="0" max="100" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="sequencer-grid" class="piano-roll-container"></div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Visualizer -->
+        <canvas id="visualizer" class="visualizer"></canvas>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
