@@ -265,7 +265,7 @@ export class PianoRoll {
                 const deltaX = x - this.dragStartX;
                 const deltaSteps = deltaX / this.stepWidth;
                 let newGate = Math.max(0.1, this.dragStartValue + deltaSteps);
-                newGate = Math.min(newGate, 4); // Max 4 steps
+                newGate = Math.min(newGate, 32); // Max 32 steps (8 bars)
                 newGate = Math.round(newGate * 10) / 10; // Round to 0.1
 
                 this.sequencer.setStep(this.selectedNote.step, { gate: newGate });
@@ -377,7 +377,7 @@ export class PianoRoll {
             case 'ArrowRight':
                 // Increase gate length
                 e.preventDefault();
-                const newGateR = Math.min(4, stepData.gate + 0.1);
+                const newGateR = Math.min(32, stepData.gate + 0.1);
                 this.sequencer.setStep(this.selectedNote.step, { gate: newGateR });
                 this.render();
                 break;
