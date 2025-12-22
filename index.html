@@ -26,13 +26,6 @@
                     <label>BPM</label>
                     <input type="number" id="bpm" value="120" min="20" max="300">
                 </div>
-                <div class="preset-selector">
-                    <select id="preset-select">
-                        <option value="purity">Purity</option>
-                        <option value="init">Init</option>
-                    </select>
-                    <button id="preset-load" class="btn btn-small">Load</button>
-                </div>
             </div>
         </header>
 
@@ -375,18 +368,13 @@
                 </div>
             </section>
 
-            <!-- Keyboard -->
-            <section class="keyboard-section">
-                <div id="keyboard" class="keyboard"></div>
-            </section>
-
-            <!-- Piano Roll Editor -->
-            <section class="sequencer-section">
-                <div class="panel sequencer-panel piano-roll-panel">
-                    <div class="sequencer-header">
-                        <h2 class="panel-title">Piano Roll</h2>
-                        <div class="sequencer-controls">
-                            <button id="seq-play" class="btn btn-small">▶ Play</button>
+            <!-- Channel Strips (Mixer) -->
+            <section class="mixer-section">
+                <div class="panel mixer-panel">
+                    <div class="mixer-header">
+                        <h2 class="panel-title">Tracks</h2>
+                        <div class="mixer-controls">
+                            <button id="seq-play" class="btn btn-small">▶ Play All</button>
                             <button id="seq-stop" class="btn btn-small">■ Stop</button>
                             <select id="seq-length">
                                 <option value="16" selected>16 Steps</option>
@@ -394,6 +382,39 @@
                                 <option value="64">64 Steps</option>
                                 <option value="128">128 Steps (32 Bars)</option>
                             </select>
+                        </div>
+                    </div>
+                    <div id="channel-strips" class="channel-strips-container"></div>
+                </div>
+            </section>
+
+            <!-- Selected Channel Synth Controls -->
+            <section id="synth-controls-section" class="synth-controls-section" style="display: none;">
+                <div class="panel synth-controls-panel">
+                    <div class="synth-controls-header">
+                        <h2 class="panel-title">Synth: <span id="current-channel-name">Track 1</span></h2>
+                        <div class="preset-selector">
+                            <select id="preset-select">
+                                <option value="purity">Purity</option>
+                                <option value="init">Init</option>
+                            </select>
+                            <button id="preset-load" class="btn btn-small">Load</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Keyboard -->
+            <section class="keyboard-section">
+                <div id="keyboard" class="keyboard"></div>
+            </section>
+
+            <!-- Piano Roll Editor (for selected channel) -->
+            <section class="sequencer-section">
+                <div class="panel sequencer-panel piano-roll-panel">
+                    <div class="sequencer-header">
+                        <h2 class="panel-title">Piano Roll: <span id="piano-roll-channel-name">Track 1</span></h2>
+                        <div class="sequencer-controls">
                             <div class="swing-control">
                                 <label>Swing</label>
                                 <input type="range" id="seq-swing" min="0" max="100" value="0">

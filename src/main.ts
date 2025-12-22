@@ -1,17 +1,18 @@
 /**
  * ES2 Purity Web Synth - Main Entry Point
- * With Rotary Knobs and Piano Roll
+ * Multi-channel version with mixer-style track management
  */
 
-import { SynthEngine } from './synth/SynthEngine';
-import { Sequencer } from './sequencer/Sequencer';
-import { ES2_PURITY_PRESET, INIT_PRESET, Preset } from './synth/Preset';
+import { ChannelManager } from './channel/ChannelManager';
+import { Channel } from './channel/Channel';
+import { ES2_PURITY_PRESET, INIT_PRESET } from './synth/Preset';
 import { RotaryKnob, rotaryKnobStyles } from './ui/RotaryKnob';
 import { PianoRoll, pianoRollStyles } from './ui/PianoRoll';
+import { ChannelStripUI, channelStripStyles } from './ui/ChannelStrip';
 
 // Global instances
-let synth: SynthEngine;
-let sequencer: Sequencer;
+let channelManager: ChannelManager;
+let channelStripUI: ChannelStripUI;
 let pianoRoll: PianoRoll | null = null;
 const knobs: Map<string, RotaryKnob> = new Map();
 
@@ -31,7 +32,7 @@ const activeKeys: Set<string> = new Set();
  */
 function injectStyles(): void {
     const style = document.createElement('style');
-    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles;
+    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles + '\n' + channelStripStyles;
     document.head.appendChild(style);
 }
 
@@ -41,14 +42,17 @@ function injectStyles(): void {
 async function init() {
     injectStyles();
 
-    synth = new SynthEngine();
+    channelManager = new ChannelManager();
 
     // Wait for user interaction before starting audio
     const startBtn = document.getElementById('start-audio');
     if (startBtn) {
         startBtn.addEventListener('click', async () => {
-            await synth.init();
-            sequencer = new Sequencer(synth);
+            await channelManager.initMaster();
+
+            // Create first channel
+            const channel1 = await channelManager.createChannel('Pad');
+            channel1.getSequencer().loadDemoPattern();
 
             startBtn.textContent = '✓ Audio Running';
             startBtn.classList.add('active');
@@ -60,31 +64,88 @@ async function init() {
                 powerIndicator.classList.add('active');
             }
 
-            // Load default preset
-            synth.loadPreset(ES2_PURITY_PRESET);
-
             // Setup UI
+            setupChannelStrips();
             setupRotaryKnobs();
             setupToggles();
             setupKeyboard();
-            setupPianoRoll();
-            setupSequencerControls();
+            setupPianoRollForChannel(channel1);
+            setupTransportControls();
             setupPresets();
             setupVisualizer();
 
-            // Start piano roll animation loop
-            requestAnimationFrame(updatePianoRoll);
+            // Start animation loop
+            requestAnimationFrame(updateLoop);
 
-            console.log('Synth ready!');
+            console.log('Multi-channel synth ready!');
         });
     }
+}
+
+/**
+ * Setup channel strip UI
+ */
+function setupChannelStrips(): void {
+    const container = document.getElementById('channel-strips');
+    if (!container) return;
+
+    channelStripUI = new ChannelStripUI(container, channelManager);
+    channelStripUI.render();
+
+    // Handle channel selection
+    channelStripUI.setOnSelect((channel) => {
+        setupPianoRollForChannel(channel);
+        updateChannelNameDisplay(channel);
+        updateSynthControlsForChannel(channel);
+    });
+
+    // Listen for channel changes
+    channelManager.setOnSelectionChange((channelId) => {
+        const channel = channelId ? channelManager.getChannel(channelId) : null;
+        if (channel) {
+            setupPianoRollForChannel(channel);
+            updateChannelNameDisplay(channel);
+        }
+    });
+}
+
+/**
+ * Update channel name displays
+ */
+function updateChannelNameDisplay(channel: Channel): void {
+    const nameEl = document.getElementById('current-channel-name');
+    const pianoRollNameEl = document.getElementById('piano-roll-channel-name');
+
+    if (nameEl) nameEl.textContent = channel.name;
+    if (pianoRollNameEl) pianoRollNameEl.textContent = channel.name;
+}
+
+/**
+ * Update synth controls for selected channel
+ */
+function updateSynthControlsForChannel(channel: Channel): void {
+    // In future: update knobs to reflect this channel's synth settings
+    // For now, knobs are shared and modify the selected channel
+}
+
+/**
+ * Setup piano roll for a specific channel
+ */
+function setupPianoRollForChannel(channel: Channel): void {
+    const container = document.getElementById('sequencer-grid');
+    if (!container) return;
+
+    // Create piano roll for this channel's sequencer
+    pianoRoll = new PianoRoll(container, channel.getSequencer());
+
+    // Update channel name
+    updateChannelNameDisplay(channel);
 }
 
 /**
  * Setup rotary knobs to replace sliders
  */
 function setupRotaryKnobs(): void {
-    // Find all knob inputs and replace with rotary knobs
     document.querySelectorAll('input.knob').forEach((input) => {
         const htmlInput = input as HTMLInputElement;
         const paramName = htmlInput.dataset.param;
@@ -93,15 +154,12 @@ function setupRotaryKnobs(): void {
         const container = htmlInput.parentElement;
         if (!container) return;
 
-        // Get existing label
         const existingLabel = container.querySelector('.knob-label, label');
         const labelText = existingLabel?.textContent || paramName;
 
-        // Determine size
         const isLarge = htmlInput.classList.contains('large');
         const isSmall = container.classList.contains('small');
 
-        // Create rotary knob
         const knob = new RotaryKnob(container, {
             min: parseFloat(htmlInput.min),
             max: parseFloat(htmlInput.max),
@@ -110,13 +168,15 @@ function setupRotaryKnobs(): void {
             label: labelText,
             size: isLarge ? 'large' : isSmall ? 'small' : 'normal',
             onChange: (value) => {
-                synth.setParam(paramName, value);
+                // Apply to selected channel's synth
+                const channel = channelManager.getSelectedChannel();
+                if (channel) {
+                    channel.getSynth().setParam(paramName, value);
+                }
             }
         });
 
         knobs.set(paramName, knob);
-
-        // Remove original input and label
         htmlInput.remove();
         existingLabel?.remove();
     });
@@ -132,7 +192,10 @@ function setupToggles(): void {
         if (!paramName) return;
 
         checkbox.addEventListener('change', () => {
-            synth.setParam(paramName, checkbox.checked);
+            const channel = channelManager.getSelectedChannel();
+            if (channel) {
+                channel.getSynth().setParam(paramName, checkbox.checked);
+            }
         });
     });
 }
@@ -146,7 +209,6 @@ function setupKeyboard() {
 
     keyboard.innerHTML = '';
 
-    // Create 2 octaves (C3 to B4)
     const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const startNote = 48; // C3
 
@@ -159,21 +221,29 @@ function setupKeyboard() {
             key.className = `key ${isBlack ? 'black' : 'white'}`;
             key.dataset.note = String(midiNote);
 
-            // Mouse events
             key.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                synth.noteOn(midiNote, 100);
-                key.classList.add('active');
+                const channel = channelManager.getSelectedChannel();
+                if (channel) {
+                    channel.noteOn(midiNote, 100);
+                    key.classList.add('active');
+                }
             });
 
             key.addEventListener('mouseup', () => {
-                synth.noteOff(midiNote);
-                key.classList.remove('active');
+                const channel = channelManager.getSelectedChannel();
+                if (channel) {
+                    channel.noteOff(midiNote);
+                    key.classList.remove('active');
+                }
             });
 
             key.addEventListener('mouseleave', () => {
-                synth.noteOff(midiNote);
-                key.classList.remove('active');
+                const channel = channelManager.getSelectedChannel();
+                if (channel) {
+                    channel.noteOff(midiNote);
+                    key.classList.remove('active');
+                }
             });
 
             keyboard.appendChild(key);
@@ -182,26 +252,30 @@ function setupKeyboard() {
 
     // Computer keyboard input
     document.addEventListener('keydown', (e) => {
-        if (e.repeat || !synth.isInitialized()) return;
+        if (e.repeat) return;
+
+        const channel = channelManager.getSelectedChannel();
+        if (!channel || !channel.isInitialized()) return;
 
         const note = keyboardMap[e.key.toLowerCase()];
         if (note !== undefined && !activeKeys.has(e.key)) {
             activeKeys.add(e.key);
-            synth.noteOn(note, 100);
+            channel.noteOn(note, 100);
 
-            // Highlight key
             const keyEl = keyboard.querySelector(`[data-note="${note}"]`);
             if (keyEl) keyEl.classList.add('active');
         }
     });
 
     document.addEventListener('keyup', (e) => {
+        const channel = channelManager.getSelectedChannel();
+        if (!channel) return;
+
         const note = keyboardMap[e.key.toLowerCase()];
         if (note !== undefined) {
             activeKeys.delete(e.key);
-            synth.noteOff(note);
+            channel.noteOff(note);
 
-            // Remove highlight
             const keyEl = keyboard.querySelector(`[data-note="${note}"]`);
             if (keyEl) keyEl.classList.remove('active');
         }
@@ -209,91 +283,89 @@ function setupKeyboard() {
 }
 
 /**
- * Setup Piano Roll editor
+ * Animation loop for piano roll and visualizer
  */
-function setupPianoRoll(): void {
-    const container = document.getElementById('sequencer-grid');
-    if (!container || !sequencer) return;
-
-    // Load demo pattern
-    sequencer.loadDemoPattern();
-
-    // Create piano roll
-    pianoRoll = new PianoRoll(container, sequencer);
-
-    // Update piano roll when step changes
-    sequencer.onStep((step) => {
-        // Piano roll will update in animation loop
-    });
-}
-
-/**
- * Animation loop for piano roll
- */
-function updatePianoRoll(): void {
-    if (pianoRoll && sequencer?.getIsPlaying()) {
+function updateLoop(): void {
+    if (pianoRoll && channelManager.isPlaying) {
         pianoRoll.update();
     }
-    requestAnimationFrame(updatePianoRoll);
+    requestAnimationFrame(updateLoop);
 }
 
 /**
- * Setup sequencer transport controls
+ * Setup transport controls (play/stop for all channels)
  */
-function setupSequencerControls(): void {
+function setupTransportControls(): void {
     const playBtn = document.getElementById('seq-play');
     const stopBtn = document.getElementById('seq-stop');
     const lengthSelect = document.getElementById('seq-length') as HTMLSelectElement;
     const swingSlider = document.getElementById('seq-swing') as HTMLInputElement;
     const bpmInput = document.getElementById('bpm') as HTMLInputElement;
 
-    // Transport controls
+    // Play all channels
     playBtn?.addEventListener('click', () => {
-        sequencer.play();
+        channelManager.play();
         playBtn.classList.add('active');
         stopBtn?.classList.remove('active');
     });
 
+    // Stop all channels
     stopBtn?.addEventListener('click', () => {
-        sequencer.stop();
+        channelManager.stop();
         stopBtn.classList.add('active');
         playBtn?.classList.remove('active');
         pianoRoll?.update();
     });
 
-    // Length change
+    // Length change for all channels
     lengthSelect?.addEventListener('change', () => {
-        sequencer.setLength(parseInt(lengthSelect.value) as 16 | 32 | 64 | 128);
+        channelManager.setLength(parseInt(lengthSelect.value) as 16 | 32 | 64 | 128);
         pianoRoll?.update();
     });
 
-    // Swing
+    // Swing (for selected channel)
     swingSlider?.addEventListener('input', () => {
-        sequencer.setSwing(parseInt(swingSlider.value));
+        const channel = channelManager.getSelectedChannel();
+        if (channel) {
+            channel.getSequencer().setSwing(parseInt(swingSlider.value));
+        }
     });
 
-    // BPM
+    // BPM for all channels
     bpmInput?.addEventListener('change', () => {
-        sequencer.setBpm(parseInt(bpmInput.value));
+        channelManager.setBpm(parseInt(bpmInput.value));
+    });
+
+    // Listen for transport changes
+    channelManager.setOnTransportChange((isPlaying) => {
+        if (isPlaying) {
+            playBtn?.classList.add('active');
+            stopBtn?.classList.remove('active');
+        } else {
+            stopBtn?.classList.add('active');
+            playBtn?.classList.remove('active');
+        }
     });
 }
 
 /**
- * Setup preset controls
+ * Setup preset controls (for selected channel)
  */
 function setupPresets(): void {
     const presetSelect = document.getElementById('preset-select') as HTMLSelectElement;
     const presetLoad = document.getElementById('preset-load');
 
     presetLoad?.addEventListener('click', () => {
+        const channel = channelManager.getSelectedChannel();
+        if (!channel) return;
+
         const value = presetSelect.value;
         if (value === 'purity') {
-            synth.loadPreset(ES2_PURITY_PRESET);
+            channel.loadPreset(ES2_PURITY_PRESET);
         } else if (value === 'init') {
-            synth.loadPreset(INIT_PRESET);
+            channel.loadPreset(INIT_PRESET);
         }
 
-        // Update knob values from preset
         updateKnobsFromPreset();
     });
 }
@@ -302,12 +374,11 @@ function setupPresets(): void {
  * Update knob visuals from current preset
  */
 function updateKnobsFromPreset(): void {
-    // This would update all knobs to match loaded preset values
-    // Implementation depends on how params are mapped
+    // TODO: Update all knobs to match loaded preset values
 }
 
 /**
- * Setup visualizer
+ * Setup visualizer (uses master analyser)
  */
 function setupVisualizer() {
     const canvas = document.getElementById('visualizer') as HTMLCanvasElement;
@@ -316,7 +387,6 @@ function setupVisualizer() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Resize canvas
     function resize() {
         canvas.width = window.innerWidth;
         canvas.height = 60;
@@ -324,13 +394,12 @@ function setupVisualizer() {
     resize();
     window.addEventListener('resize', resize);
 
-    // Draw loop
     function draw() {
         requestAnimationFrame(draw);
 
         if (!ctx) return;
 
-        const analyser = synth.getAnalyser();
+        const analyser = channelManager.getMasterAnalyser();
         if (!analyser) {
             ctx.fillStyle = 'rgba(26, 30, 36, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -341,21 +410,16 @@ function setupVisualizer() {
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
 
-        // Clear with fade
         ctx.fillStyle = 'rgba(26, 30, 36, 0.3)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw bars
         const barWidth = (canvas.width / bufferLength) * 2.5;
         let x = 0;
 
         for (let i = 0; i < bufferLength; i++) {
             const barHeight = (dataArray[i] / 255) * canvas.height;
-
-            // Blue-green gradient
             const hue = 180 + (dataArray[i] / 255) * 40;
             ctx.fillStyle = `hsla(${hue}, 60%, 50%, 0.7)`;
-
             ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
             x += barWidth + 1;
 
