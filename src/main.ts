@@ -65,10 +65,6 @@ async function init() {
 
             // Setup UI
             setupRotaryKnobs();
-            setupKeyboard();
-            setupPianoRoll();
-            setupSequencerControls();
-            setupRotaryKnobs();
             setupToggles();
             setupKeyboard();
             setupPianoRoll();

@@ -1,21 +1,17 @@
 /**
- * Piano Roll Editor - Enhanced Version
+ * Piano Roll Editor - Polyphonic Version
  * Logic Pro style MIDI editor with:
+ * - Multiple notes per step (chords)
  * - Note selection
  * - Duration editing (left/right drag)
  * - Velocity editing (up/down drag while holding)
  * - Delete key to remove notes
- * - Double-click to create notes
+ * - Double-click to create/delete notes
+ * - Horizontal scrollbar for long sequences
+ * - Resizable height
  */
 
-import { Sequencer, Step } from '../sequencer/Sequencer';
-
-interface NoteData {
-    step: number;
-    note: number;
-    velocity: number;
-    gate: number;
-}
+import { Sequencer, NoteEvent } from '../sequencer/Sequencer';
 
 interface SelectedNote {
     step: number;
@@ -27,14 +23,22 @@ type EditMode = 'none' | 'select' | 'duration' | 'velocity' | 'move' | 'draw';
 export class PianoRoll {
     private container: HTMLElement;
     private sequencer: Sequencer;
+    private wrapper: HTMLElement;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
+    private hScrollbar: HTMLElement;
+    private hScrollThumb: HTMLElement;
+    private resizeHandle: HTMLElement;
 
     // Piano roll dimensions
     private pianoWidth: number = 60;
     private noteHeight: number = 14;
     private stepWidth: number = 32;
     private headerHeight: number = 26;
+    private scrollbarHeight: number = 14;
+    private canvasHeight: number = 320;
+    private minHeight: number = 200;
+    private maxHeight: number = 600;
 
     // Note range (MIDI notes)
     private minNote: number = 36; // C2
@@ -53,6 +57,12 @@ export class PianoRoll {
     private lastClickTime: number = 0;
     private dragStartStep: number = 0;
     private dragStartNote: number = 0;
+    private isResizing: boolean = false;
+    private resizeStartY: number = 0;
+    private resizeStartHeight: number = 0;
+    private isScrollbarDragging: boolean = false;
+    private scrollbarDragStartX: number = 0;
+    private scrollbarDragStartScroll: number = 0;
 
     // Colors (Logic Pro style)
     private colors = {
@@ -70,32 +80,49 @@ export class PianoRoll {
         header: '#2a3038',
         headerText: '#a0aab8',
         playhead: '#4ade80',
-        resizeHandle: '#ffcc00'
+        resizeHandle: '#ffcc00',
+        scrollbar: '#2a3038',
+        scrollThumb: '#4a5568'
     };
 
-    private onNoteChange: ((step: number, note: number, data: Partial<Step>) => void) | null = null;
+    private onNoteChange: ((step: number, note: number, data: Partial<NoteEvent>) => void) | null = null;
 
     constructor(container: HTMLElement, sequencer: Sequencer) {
         this.container = container;
         this.sequencer = sequencer;
 
+        // Create wrapper with scrollbar
+        this.wrapper = document.createElement('div');
+        this.wrapper.className = 'piano-roll-wrapper';
+
         // Create canvas
         this.canvas = document.createElement('canvas');
         this.canvas.className = 'piano-roll-canvas';
-        this.canvas.tabIndex = 0; // Make focusable for keyboard events
+        this.canvas.tabIndex = 0;
         this.ctx = this.canvas.getContext('2d')!;
 
-        // Create wrapper
-        const wrapper = document.createElement('div');
-        wrapper.className = 'piano-roll-wrapper';
-        wrapper.appendChild(this.canvas);
+        // Create horizontal scrollbar
+        this.hScrollbar = document.createElement('div');
+        this.hScrollbar.className = 'piano-roll-hscrollbar';
+        this.hScrollThumb = document.createElement('div');
+        this.hScrollThumb.className = 'piano-roll-hscroll-thumb';
+        this.hScrollbar.appendChild(this.hScrollThumb);
+
+        // Create resize handle
+        this.resizeHandle = document.createElement('div');
+        this.resizeHandle.className = 'piano-roll-resize-handle';
+
+        this.wrapper.appendChild(this.canvas);
+        this.wrapper.appendChild(this.hScrollbar);
+        this.wrapper.appendChild(this.resizeHandle);
 
         container.innerHTML = '';
-        container.appendChild(wrapper);
+        container.appendChild(this.wrapper);
 
         this.resize();
         this.bindEvents();
         this.render();
+        this.updateScrollbar();
 
         // Initial scroll to middle octave
         this.scrollTop = (this.maxNote - 64) * this.noteHeight;
@@ -106,16 +133,47 @@ export class PianoRoll {
         const dpr = window.devicePixelRatio || 1;
 
         this.canvas.width = rect.width * dpr;
-        this.canvas.height = 320 * dpr;
+        this.canvas.height = this.canvasHeight * dpr;
         this.canvas.style.width = rect.width + 'px';
-        this.canvas.style.height = '320px';
+        this.canvas.style.height = this.canvasHeight + 'px';
 
         this.ctx.scale(dpr, dpr);
         this.render();
+        this.updateScrollbar();
+    }
+
+    private getMaxScrollLeft(): number {
+        const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+        const totalWidth = this.sequencer.getLength() * this.stepWidth;
+        const visibleWidth = canvasWidth - this.pianoWidth;
+        return Math.max(0, totalWidth - visibleWidth);
+    }
+
+    private updateScrollbar(): void {
+        const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+        const totalWidth = this.sequencer.getLength() * this.stepWidth;
+        const visibleWidth = canvasWidth - this.pianoWidth;
+
+        if (totalWidth <= visibleWidth) {
+            this.hScrollbar.style.display = 'none';
+            return;
+        }
+
+        this.hScrollbar.style.display = 'block';
+        this.hScrollbar.style.left = this.pianoWidth + 'px';
+        this.hScrollbar.style.width = (canvasWidth - this.pianoWidth) + 'px';
+
+        const thumbWidth = Math.max(30, (visibleWidth / totalWidth) * (canvasWidth - this.pianoWidth));
+        const maxThumbLeft = (canvasWidth - this.pianoWidth) - thumbWidth;
+        const maxScrollLeft = this.getMaxScrollLeft();
+        const thumbLeft = maxScrollLeft > 0 ? (this.scrollLeft / maxScrollLeft) * maxThumbLeft : 0;
+
+        this.hScrollThumb.style.width = thumbWidth + 'px';
+        this.hScrollThumb.style.left = thumbLeft + 'px';
     }
 
     private bindEvents(): void {
-        // Mouse events
+        // Mouse events on canvas
         this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
@@ -125,13 +183,15 @@ export class PianoRoll {
         // Keyboard events
         this.canvas.addEventListener('keydown', this.onKeyDown.bind(this));
 
-        // Scroll
+        // Scroll (vertical only on canvas, horizontal via shift or scrollbar)
         this.canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
-            if (e.shiftKey) {
+            if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                 // Horizontal scroll
-                this.scrollLeft += e.deltaY;
-                this.scrollLeft = Math.max(0, this.scrollLeft);
+                const delta = e.shiftKey ? e.deltaY : e.deltaX;
+                this.scrollLeft += delta;
+                this.scrollLeft = Math.max(0, Math.min(this.scrollLeft, this.getMaxScrollLeft()));
+                this.updateScrollbar();
             } else {
                 // Vertical scroll
                 this.scrollTop += e.deltaY;
@@ -141,6 +201,71 @@ export class PianoRoll {
                 ));
             }
             this.render();
+        });
+
+        // Scrollbar drag
+        this.hScrollThumb.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.isScrollbarDragging = true;
+            this.scrollbarDragStartX = e.clientX;
+            this.scrollbarDragStartScroll = this.scrollLeft;
+        });
+
+        // Click on scrollbar track
+        this.hScrollbar.addEventListener('mousedown', (e) => {
+            if (e.target === this.hScrollbar) {
+                const rect = this.hScrollbar.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const thumbRect = this.hScrollThumb.getBoundingClientRect();
+                const thumbCenter = thumbRect.left - rect.left + thumbRect.width / 2;
+
+                if (clickX < thumbCenter) {
+                    // Click left of thumb - scroll left
+                    this.scrollLeft = Math.max(0, this.scrollLeft - 200);
+                } else {
+                    // Click right of thumb - scroll right
+                    this.scrollLeft = Math.min(this.getMaxScrollLeft(), this.scrollLeft + 200);
+                }
+                this.updateScrollbar();
+                this.render();
+            }
+        });
+
+        // Resize handle
+        this.resizeHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.isResizing = true;
+            this.resizeStartY = e.clientY;
+            this.resizeStartHeight = this.canvasHeight;
+        });
+
+        // Global mouse events for dragging
+        document.addEventListener('mousemove', (e) => {
+            if (this.isScrollbarDragging) {
+                const deltaX = e.clientX - this.scrollbarDragStartX;
+                const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+                const totalWidth = this.sequencer.getLength() * this.stepWidth;
+                const visibleWidth = canvasWidth - this.pianoWidth;
+                const scrollRatio = totalWidth / visibleWidth;
+
+                this.scrollLeft = Math.max(0, Math.min(
+                    this.getMaxScrollLeft(),
+                    this.scrollbarDragStartScroll + deltaX * scrollRatio
+                ));
+                this.updateScrollbar();
+                this.render();
+            }
+
+            if (this.isResizing) {
+                const deltaY = e.clientY - this.resizeStartY;
+                this.canvasHeight = Math.max(this.minHeight, Math.min(this.maxHeight, this.resizeStartHeight + deltaY));
+                this.resize();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            this.isScrollbarDragging = false;
+            this.isResizing = false;
         });
 
         // Focus on click
@@ -162,25 +287,21 @@ export class PianoRoll {
         return { step, note, x, y };
     }
 
-    private findNoteAt(step: number, note: number): NoteData | null {
-        // Check if there's a note at this position
-        // Notes can span multiple steps due to gate length
+    private findNoteAt(step: number, note: number): { step: number; noteEvent: NoteEvent } | null {
         const steps = this.sequencer.getSteps();
 
         for (let i = 0; i <= step; i++) {
-            const s = steps[i];
-            if (s && s.note === note) {
-                const noteEndStep = i + Math.ceil(s.gate);
-                if (step >= i && step < noteEndStep) {
-                    return { step: i, note: s.note, velocity: s.velocity, gate: s.gate };
+            const stepData = steps[i];
+            if (!stepData) continue;
+
+            for (const noteEvent of stepData.notes) {
+                if (noteEvent.note === note) {
+                    const noteEndStep = i + Math.ceil(noteEvent.gate);
+                    if (step >= i && step < noteEndStep) {
+                        return { step: i, noteEvent };
+                    }
                 }
             }
-        }
-
-        // Exact match for single step notes
-        const exactStep = steps[step];
-        if (exactStep && exactStep.note === note) {
-            return { step, note: exactStep.note, velocity: exactStep.velocity, gate: exactStep.gate };
         }
 
         return null;
@@ -200,7 +321,6 @@ export class PianoRoll {
         if (step < 0 || step >= this.sequencer.getLength()) return;
         if (note < this.minNote || note > this.maxNote) return;
 
-        // Check double-click timing
         const now = Date.now();
         const isDoubleClick = (now - this.lastClickTime) < 300;
         this.lastClickTime = now;
@@ -208,28 +328,24 @@ export class PianoRoll {
         const existingNote = this.findNoteAt(step, note);
 
         if (existingNote) {
-            // Select the note
-            this.selectedNote = { step: existingNote.step, note: existingNote.note };
+            this.selectedNote = { step: existingNote.step, note: existingNote.noteEvent.note };
             this.canvas.focus();
 
-            // Check if near right edge for duration editing
-            if (this.isNearRightEdge(x, existingNote.step, existingNote.gate)) {
+            if (this.isNearRightEdge(x, existingNote.step, existingNote.noteEvent.gate)) {
                 this.editMode = 'duration';
                 this.dragStartX = x;
-                this.dragStartValue = existingNote.gate;
+                this.dragStartValue = existingNote.noteEvent.gate;
             } else {
-                // Otherwise, move mode (drag to new position)
                 this.editMode = 'move';
                 this.dragStartX = x;
                 this.dragStartY = y;
                 this.dragStartStep = existingNote.step;
-                this.dragStartNote = existingNote.note;
-                this.dragStartValue = existingNote.velocity;
+                this.dragStartNote = existingNote.noteEvent.note;
+                this.dragStartValue = existingNote.noteEvent.velocity;
             }
 
             this.isDragging = true;
         } else if (!isDoubleClick) {
-            // Deselect when clicking empty space (but not on double-click)
             this.selectedNote = null;
         }
 
@@ -237,15 +353,13 @@ export class PianoRoll {
     }
 
     private onMouseMove(e: MouseEvent): void {
-        const { step, note, x, y } = this.getGridPosition(e);
+        const { step, note, x } = this.getGridPosition(e);
 
-        // Update hover state
         const existingNote = this.findNoteAt(step, note);
         if (existingNote) {
-            this.hoveredNote = { step: existingNote.step, note: existingNote.note };
+            this.hoveredNote = { step: existingNote.step, note: existingNote.noteEvent.note };
 
-            // Change cursor based on position
-            if (this.isNearRightEdge(x, existingNote.step, existingNote.gate)) {
+            if (this.isNearRightEdge(x, existingNote.step, existingNote.noteEvent.gate)) {
                 this.canvas.style.cursor = 'ew-resize';
             } else {
                 this.canvas.style.cursor = 'pointer';
@@ -255,46 +369,33 @@ export class PianoRoll {
             this.canvas.style.cursor = 'crosshair';
         }
 
-        // Handle dragging
         if (this.isDragging && this.selectedNote) {
-            const stepData = this.sequencer.getStep(this.selectedNote.step);
-            if (!stepData) return;
+            const noteEvent = this.sequencer.getNote(this.selectedNote.step, this.selectedNote.note);
+            if (!noteEvent) return;
 
             if (this.editMode === 'duration') {
-                // Adjust gate length
                 const deltaX = x - this.dragStartX;
                 const deltaSteps = deltaX / this.stepWidth;
                 let newGate = Math.max(0.1, this.dragStartValue + deltaSteps);
-                newGate = Math.min(newGate, 32); // Max 32 steps (8 bars)
-                newGate = Math.round(newGate * 10) / 10; // Round to 0.1
+                newGate = Math.min(newGate, 32);
+                newGate = Math.round(newGate * 10) / 10;
 
-                this.sequencer.setStep(this.selectedNote.step, { gate: newGate });
+                this.sequencer.updateNote(this.selectedNote.step, this.selectedNote.note, { gate: newGate });
                 this.render();
 
                 if (this.onNoteChange) {
                     this.onNoteChange(this.selectedNote.step, this.selectedNote.note, { gate: newGate });
                 }
             } else if (this.editMode === 'move') {
-                // Move note to new position
                 const newStep = Math.max(0, Math.min(this.sequencer.getLength() - 1, step));
                 const newNote = Math.max(this.minNote, Math.min(this.maxNote, note));
 
-                // Only move if position actually changed
-                if (newStep !== this.selectedNote.step || newNote !== stepData.note) {
-                    // Save old note data
-                    const oldData = { ...stepData };
+                if (newStep !== this.selectedNote.step || newNote !== noteEvent.note) {
+                    const oldData = { ...noteEvent };
 
-                    // Clear old position
-                    this.sequencer.setStep(this.selectedNote.step, { note: -1 });
+                    this.sequencer.removeNote(this.selectedNote.step, this.selectedNote.note);
+                    this.sequencer.addNote(newStep, newNote, oldData.velocity, oldData.gate);
 
-                    // Set new position
-                    this.sequencer.setStep(newStep, {
-                        note: newNote,
-                        velocity: oldData.velocity,
-                        gate: oldData.gate
-                    });
-
-                    // Update selection
                     this.selectedNote = { step: newStep, note: newNote };
                     this.render();
 
@@ -305,7 +406,6 @@ export class PianoRoll {
             }
         }
 
-        // Render for hover effect
         if (!this.isDragging) {
             this.render();
         }
@@ -333,12 +433,10 @@ export class PianoRoll {
         const existingNote = this.findNoteAt(step, note);
 
         if (existingNote) {
-            // Double-click on existing note = delete it
-            this.sequencer.setStep(existingNote.step, { note: -1 });
+            this.sequencer.removeNote(existingNote.step, existingNote.noteEvent.note);
             this.selectedNote = null;
         } else {
-            // Double-click on empty = create note
-            this.sequencer.setStep(step, { note, velocity: 100, gate: 1.0 });
+            this.sequencer.addNote(step, note, 100, 1.0);
             this.selectedNote = { step, note };
         }
 
@@ -353,48 +451,43 @@ export class PianoRoll {
     private onKeyDown(e: KeyboardEvent): void {
         if (!this.selectedNote) return;
 
-        const stepData = this.sequencer.getStep(this.selectedNote.step);
-        if (!stepData) return;
+        const noteEvent = this.sequencer.getNote(this.selectedNote.step, this.selectedNote.note);
+        if (!noteEvent) return;
 
         switch (e.key) {
             case 'Delete':
             case 'Backspace':
-                // Delete selected note
                 e.preventDefault();
-                this.sequencer.setStep(this.selectedNote.step, { note: -1 });
+                this.sequencer.removeNote(this.selectedNote.step, this.selectedNote.note);
                 this.selectedNote = null;
                 this.render();
                 break;
 
             case 'ArrowLeft':
-                // Decrease gate length
                 e.preventDefault();
-                const newGateL = Math.max(0.1, stepData.gate - 0.1);
-                this.sequencer.setStep(this.selectedNote.step, { gate: newGateL });
+                const newGateL = Math.max(0.1, noteEvent.gate - 0.1);
+                this.sequencer.updateNote(this.selectedNote.step, this.selectedNote.note, { gate: newGateL });
                 this.render();
                 break;
 
             case 'ArrowRight':
-                // Increase gate length
                 e.preventDefault();
-                const newGateR = Math.min(32, stepData.gate + 0.1);
-                this.sequencer.setStep(this.selectedNote.step, { gate: newGateR });
+                const newGateR = Math.min(32, noteEvent.gate + 0.1);
+                this.sequencer.updateNote(this.selectedNote.step, this.selectedNote.note, { gate: newGateR });
                 this.render();
                 break;
 
             case 'ArrowUp':
-                // Increase velocity
                 e.preventDefault();
-                const newVelUp = Math.min(127, stepData.velocity + 5);
-                this.sequencer.setStep(this.selectedNote.step, { velocity: newVelUp });
+                const newVelUp = Math.min(127, noteEvent.velocity + 5);
+                this.sequencer.updateNote(this.selectedNote.step, this.selectedNote.note, { velocity: newVelUp });
                 this.render();
                 break;
 
             case 'ArrowDown':
-                // Decrease velocity
                 e.preventDefault();
-                const newVelDown = Math.max(1, stepData.velocity - 5);
-                this.sequencer.setStep(this.selectedNote.step, { velocity: newVelDown });
+                const newVelDown = Math.max(1, noteEvent.velocity - 5);
+                this.sequencer.updateNote(this.selectedNote.step, this.selectedNote.note, { velocity: newVelDown });
                 this.render();
                 break;
         }
@@ -413,7 +506,6 @@ export class PianoRoll {
     }
 
     private velocityToColor(velocity: number): string {
-        // Interpolate between low and high velocity colors
         const t = velocity / 127;
         const lowR = 128, lowG = 64, lowB = 32;
         const highR = 224, highG = 96, highB = 64;
@@ -443,7 +535,6 @@ export class PianoRoll {
         for (let i = 0; i < steps; i++) {
             const x = this.pianoWidth + i * this.stepWidth - this.scrollLeft;
             if (x > this.pianoWidth - this.stepWidth && x < width) {
-                // Beat numbers (every 4 steps)
                 if (i % 4 === 0) {
                     this.ctx.fillText(String(i / 4 + 1), x + this.stepWidth * 2, 16);
                 }
@@ -458,11 +549,9 @@ export class PianoRoll {
 
             const isBlack = this.isBlackKey(note);
 
-            // Key background
             this.ctx.fillStyle = isBlack ? this.colors.pianoBlack : this.colors.pianoWhite;
             this.ctx.fillRect(0, y, this.pianoWidth - 2, this.noteHeight - 1);
 
-            // Key label (only C notes)
             if (note % 12 === 0) {
                 this.ctx.fillStyle = isBlack ? '#aaa' : '#333';
                 this.ctx.font = '9px Inter, sans-serif';
@@ -470,11 +559,9 @@ export class PianoRoll {
                 this.ctx.fillText(this.getNoteName(note), 4, y + this.noteHeight - 3);
             }
 
-            // Grid row background
             this.ctx.fillStyle = isBlack ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.02)';
             this.ctx.fillRect(this.pianoWidth, y, width - this.pianoWidth, this.noteHeight);
 
-            // Grid horizontal line
             this.ctx.strokeStyle = this.colors.gridLine;
             this.ctx.beginPath();
             this.ctx.moveTo(this.pianoWidth, y + this.noteHeight);
@@ -482,15 +569,12 @@ export class PianoRoll {
             this.ctx.stroke();
         }
 
-        // Draw vertical grid lines and notes
-        const stepData = this.sequencer.getSteps();
-
+        // Draw vertical grid lines
         for (let i = 0; i <= steps; i++) {
             const x = this.pianoWidth + i * this.stepWidth - this.scrollLeft;
 
             if (x < this.pianoWidth - this.stepWidth || x > width + this.stepWidth) continue;
 
-            // Vertical grid line
             this.ctx.strokeStyle = i % 4 === 0 ? this.colors.gridLineAccent : this.colors.gridLine;
             this.ctx.lineWidth = i % 4 === 0 ? 1.5 : 0.5;
             this.ctx.beginPath();
@@ -498,59 +582,63 @@ export class PianoRoll {
             this.ctx.lineTo(x, height);
             this.ctx.stroke();
             this.ctx.lineWidth = 1;
+        }
 
-            // Draw note if present
-            if (i < steps && stepData[i].note >= 0) {
-                const note = stepData[i].note;
-                const velocity = stepData[i].velocity;
-                const gate = stepData[i].gate;
+        // Draw all notes
+        const stepData = this.sequencer.getSteps();
+        for (let i = 0; i < steps; i++) {
+            const step = stepData[i];
+            if (!step) continue;
+
+            for (const noteEvent of step.notes) {
+                const note = noteEvent.note;
+                const velocity = noteEvent.velocity;
+                const gate = noteEvent.gate;
+
+                const x = this.pianoWidth + i * this.stepWidth - this.scrollLeft;
                 const y = this.headerHeight + (this.maxNote - note) * this.noteHeight - this.scrollTop;
 
-                if (y >= this.headerHeight - this.noteHeight && y < height) {
-                    const isSelected = this.selectedNote?.step === i && this.selectedNote?.note === note;
-                    const isHovered = this.hoveredNote?.step === i && this.hoveredNote?.note === note;
+                if (x < this.pianoWidth - this.stepWidth * gate || x > width + this.stepWidth) continue;
+                if (y < this.headerHeight - this.noteHeight || y > height) continue;
 
-                    // Note rectangle with velocity-based color
-                    if (isSelected) {
-                        this.ctx.fillStyle = this.colors.noteSelected;
-                    } else if (isHovered) {
-                        this.ctx.fillStyle = this.colors.noteHover;
-                    } else {
-                        this.ctx.fillStyle = this.velocityToColor(velocity);
-                    }
+                const isSelected = this.selectedNote?.step === i && this.selectedNote?.note === note;
+                const isHovered = this.hoveredNote?.step === i && this.hoveredNote?.note === note;
 
-                    const noteWidth = this.stepWidth * gate - 2;
-                    const noteX = x + 1;
-                    const noteY = y + 1;
-                    const noteH = this.noteHeight - 2;
+                if (isSelected) {
+                    this.ctx.fillStyle = this.colors.noteSelected;
+                } else if (isHovered) {
+                    this.ctx.fillStyle = this.colors.noteHover;
+                } else {
+                    this.ctx.fillStyle = this.velocityToColor(velocity);
+                }
 
-                    this.ctx.fillRect(noteX, noteY, noteWidth, noteH);
+                const noteWidth = this.stepWidth * gate - 2;
+                const noteX = x + 1;
+                const noteY = y + 1;
+                const noteH = this.noteHeight - 2;
 
-                    // Note border
-                    this.ctx.strokeStyle = isSelected ? '#ffcc00' : 'rgba(255,255,255,0.3)';
-                    this.ctx.lineWidth = isSelected ? 2 : 1;
-                    this.ctx.strokeRect(noteX, noteY, noteWidth, noteH);
-                    this.ctx.lineWidth = 1;
+                this.ctx.fillRect(noteX, noteY, noteWidth, noteH);
 
-                    // Resize handle (right edge)
-                    if (isSelected || isHovered) {
-                        this.ctx.fillStyle = this.colors.resizeHandle;
-                        this.ctx.fillRect(noteX + noteWidth - 4, noteY, 4, noteH);
-                    }
+                this.ctx.strokeStyle = isSelected ? '#ffcc00' : 'rgba(255,255,255,0.3)';
+                this.ctx.lineWidth = isSelected ? 2 : 1;
+                this.ctx.strokeRect(noteX, noteY, noteWidth, noteH);
+                this.ctx.lineWidth = 1;
 
-                    // Velocity indicator (small bar at bottom)
-                    const velHeight = 3;
-                    const velWidth = (noteWidth - 4) * (velocity / 127);
-                    this.ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                    this.ctx.fillRect(noteX + 2, noteY + noteH - velHeight - 1, velWidth, velHeight);
+                if (isSelected || isHovered) {
+                    this.ctx.fillStyle = this.colors.resizeHandle;
+                    this.ctx.fillRect(noteX + noteWidth - 4, noteY, 4, noteH);
+                }
 
-                    // Velocity text
-                    if (noteWidth > 20) {
-                        this.ctx.fillStyle = 'rgba(255,255,255,0.8)';
-                        this.ctx.font = '8px Inter, sans-serif';
-                        this.ctx.textAlign = 'left';
-                        this.ctx.fillText(String(velocity), noteX + 3, noteY + 10);
-                    }
+                const velHeight = 3;
+                const velWidth = (noteWidth - 4) * (velocity / 127);
+                this.ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                this.ctx.fillRect(noteX + 2, noteY + noteH - velHeight - 1, velWidth, velHeight);
+
+                if (noteWidth > 20) {
+                    this.ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                    this.ctx.font = '8px Inter, sans-serif';
+                    this.ctx.textAlign = 'left';
+                    this.ctx.fillText(String(velocity), noteX + 3, noteY + 10);
                 }
             }
         }
@@ -580,9 +668,9 @@ export class PianoRoll {
 
         // Draw info for selected note
         if (this.selectedNote) {
-            const stepInfo = this.sequencer.getStep(this.selectedNote.step);
-            if (stepInfo && stepInfo.note >= 0) {
-                const infoText = `${this.getNoteName(stepInfo.note)} | Vel: ${stepInfo.velocity} | Gate: ${stepInfo.gate.toFixed(1)}`;
+            const noteEvent = this.sequencer.getNote(this.selectedNote.step, this.selectedNote.note);
+            if (noteEvent) {
+                const infoText = `${this.getNoteName(noteEvent.note)} | Vel: ${noteEvent.velocity} | Gate: ${noteEvent.gate.toFixed(1)}`;
                 this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
                 this.ctx.fillRect(width - 180, 4, 175, 18);
                 this.ctx.fillStyle = '#4ade80';
@@ -591,13 +679,49 @@ export class PianoRoll {
                 this.ctx.fillText(infoText, width - 8, 16);
             }
         }
+
+        // Draw scroll position indicator
+        const scrollInfo = `Bar ${Math.floor(this.scrollLeft / (this.stepWidth * 4)) + 1}`;
+        this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        this.ctx.fillRect(this.pianoWidth + 5, 4, 50, 18);
+        this.ctx.fillStyle = '#888';
+        this.ctx.font = '9px Inter, sans-serif';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(scrollInfo, this.pianoWidth + 10, 16);
     }
 
-    setOnNoteChange(callback: (step: number, note: number, data: Partial<Step>) => void): void {
+    setOnNoteChange(callback: (step: number, note: number, data: Partial<NoteEvent>) => void): void {
         this.onNoteChange = callback;
     }
 
     update(): void {
+        this.render();
+    }
+
+    /**
+     * Set the height of the piano roll
+     */
+    setHeight(height: number): void {
+        this.canvasHeight = Math.max(this.minHeight, Math.min(this.maxHeight, height));
+        this.resize();
+    }
+
+    /**
+     * Scroll to a specific step
+     */
+    scrollToStep(step: number): void {
+        const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+        const targetX = step * this.stepWidth;
+        const visibleWidth = canvasWidth - this.pianoWidth;
+
+        if (targetX < this.scrollLeft) {
+            this.scrollLeft = targetX;
+        } else if (targetX > this.scrollLeft + visibleWidth - this.stepWidth) {
+            this.scrollLeft = targetX - visibleWidth + this.stepWidth;
+        }
+
+        this.scrollLeft = Math.max(0, Math.min(this.scrollLeft, this.getMaxScrollLeft()));
+        this.updateScrollbar();
         this.render();
     }
 }
@@ -609,6 +733,7 @@ export const pianoRollStyles = `
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid #2a3038;
+  position: relative;
 }
 
 .piano-roll-canvas {
@@ -618,5 +743,41 @@ export const pianoRollStyles = `
 
 .piano-roll-canvas:focus {
   box-shadow: inset 0 0 0 2px rgba(74, 144, 184, 0.5);
+}
+
+.piano-roll-hscrollbar {
+  position: absolute;
+  bottom: 20px;
+  height: 12px;
+  background: #1a1e24;
+  border-top: 1px solid #2a3038;
+}
+
+.piano-roll-hscroll-thumb {
+  position: absolute;
+  height: 10px;
+  top: 1px;
+  background: #4a5568;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.piano-roll-hscroll-thumb:hover {
+  background: #5a6578;
+}
+
+.piano-roll-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(to bottom, transparent, #2a3038);
+  cursor: ns-resize;
+}
+
+.piano-roll-resize-handle:hover {
+  background: linear-gradient(to bottom, transparent, #4a90b8);
 }
 `;
