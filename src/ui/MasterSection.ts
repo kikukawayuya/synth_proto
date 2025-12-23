@@ -116,8 +116,8 @@ export const masterSectionStyles = `
 
 .eq-bands {
     display: flex;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: space-around;
+    gap: 4px;
 }
 
 .eq-band {
@@ -125,29 +125,33 @@ export const masterSectionStyles = `
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-width: 45px;
 }
 
 .eq-band-label {
     font-size: 10px;
     color: #6a8aa8;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .eq-slider-container {
-    height: 80px;
+    height: 70px;
+    width: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
 
 .eq-slider {
     -webkit-appearance: none;
-    width: 80px;
+    width: 60px;
     height: 6px;
     background: linear-gradient(to right, #c06060, #2a3540 50%, #60c060);
     border-radius: 3px;
     outline: none;
     transform: rotate(-90deg);
+    position: absolute;
 }
 
 .eq-slider::-webkit-slider-thumb {
@@ -240,8 +244,8 @@ export class MasterSection {
                 <div class="master-volume-section">
                     <div class="master-volume-label">Volume</div>
                     <div class="master-volume-container">
-                        <input type="range" class="master-volume-slider" min="0" max="2" step="0.01" value="1">
-                        <span class="master-volume-value">100%</span>
+                        <input type="range" class="master-volume-slider" min="0" max="4" step="0.01" value="1.5">
+                        <span class="master-volume-value">150%</span>
                     </div>
                 </div>
 

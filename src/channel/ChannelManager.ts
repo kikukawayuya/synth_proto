@@ -63,7 +63,7 @@ export class ChannelManager {
         this.eqHigh.gain.value = 0;
 
         this.masterGain = this.masterContext.createGain();
-        this.masterGain.gain.value = 1.0;
+        this.masterGain.gain.value = 1.5;
 
         this.masterAnalyser = this.masterContext.createAnalyser();
         this.masterAnalyser.fftSize = 2048;
@@ -406,11 +406,11 @@ export class ChannelManager {
     }
 
     /**
-     * Set master volume (0-2, 1 = unity gain)
+     * Set master volume (0-4, 1 = unity gain)
      */
     setMasterVolume(value: number): void {
         if (this.masterGain) {
-            this.masterGain.gain.value = Math.max(0, Math.min(2, value));
+            this.masterGain.gain.value = Math.max(0, Math.min(4, value));
         }
     }
 

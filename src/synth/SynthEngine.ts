@@ -54,7 +54,7 @@ export class SynthEngine {
 
         // Create master chain
         this.masterGain = this.audioContext.createGain();
-        this.masterGain.gain.value = 0.7;
+        this.masterGain.gain.value = 1.5;
 
         this.voiceMixer = this.audioContext.createGain();
         this.voiceMixer.gain.value = 1.0;
@@ -191,7 +191,7 @@ export class SynthEngine {
 
         // Mixer
         const mixer = ctx.createGain();
-        mixer.gain.value = 0.25;
+        mixer.gain.value = 0.6;
 
         // Filter
         const filter = ctx.createBiquadFilter();
