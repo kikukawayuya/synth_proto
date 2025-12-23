@@ -104,6 +104,10 @@ export class ChannelStripUI {
         const volumeContainer = document.createElement('div');
         volumeContainer.className = 'channel-volume-container';
 
+        const volumeLabel = document.createElement('div');
+        volumeLabel.className = 'channel-volume-label';
+        volumeLabel.textContent = `${Math.round(channel.volume * 100)}%`;
+
         const volumeSlider = document.createElement('input');
         volumeSlider.type = 'range';
         volumeSlider.className = 'channel-volume';
@@ -113,12 +117,13 @@ export class ChannelStripUI {
         volumeSlider.addEventListener('input', (e) => {
             e.stopPropagation();
             channel.volume = parseInt(volumeSlider.value) / 100;
+            volumeLabel.textContent = `${Math.round(channel.volume * 100)}%`;
         });
+        // イベント伝播を完全に止める
         volumeSlider.addEventListener('click', (e) => e.stopPropagation());
-
-        const volumeLabel = document.createElement('div');
-        volumeLabel.className = 'channel-volume-label';
-        volumeLabel.textContent = `${Math.round(channel.volume * 100)}%`;
+        volumeSlider.addEventListener('mousedown', (e) => e.stopPropagation());
+        volumeSlider.addEventListener('pointerdown', (e) => e.stopPropagation());
+        volumeSlider.addEventListener('touchstart', (e) => e.stopPropagation());
 
         volumeContainer.appendChild(volumeSlider);
         volumeContainer.appendChild(volumeLabel);
@@ -142,7 +147,11 @@ export class ChannelStripUI {
             e.stopPropagation();
             channel.pan = parseInt(panSlider.value) / 100;
         });
+        // イベント伝播を完全に止める
         panSlider.addEventListener('click', (e) => e.stopPropagation());
+        panSlider.addEventListener('mousedown', (e) => e.stopPropagation());
+        panSlider.addEventListener('pointerdown', (e) => e.stopPropagation());
+        panSlider.addEventListener('touchstart', (e) => e.stopPropagation());
 
         panContainer.appendChild(panLabel);
         panContainer.appendChild(panSlider);

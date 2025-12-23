@@ -99,12 +99,15 @@ export class JitaiController {
         channels.forEach(channel => {
             const synth = channel.getSynth();
 
-            // フィルター関連
-            synth.setParam('filterCutoff', this.audioParams.droneFilterCutoff);
+            // フィルター関連 (発振防止のため最小値を設定)
+            const cutoff = Math.max(200, this.audioParams.droneFilterCutoff);
+            synth.setParam('filterCutoff', cutoff);
+            // レゾナンスは発振防止のため低めに制限
+            synth.setParam('filterRes', Math.min(0.15, this.audioParams.filterLfoDepth * 0.3));
 
-            // LFO関連
-            synth.setParam('lfo1Rate', this.audioParams.filterLfoRate);
-            synth.setParam('lfo1Amount', this.audioParams.filterLfoDepth);
+            // LFO関連 (適度な範囲に制限)
+            synth.setParam('lfo1Rate', Math.max(0.01, Math.min(0.5, this.audioParams.filterLfoRate)));
+            synth.setParam('lfo1Amount', Math.min(0.3, this.audioParams.filterLfoDepth * 0.5));
 
             // エンベロープ
             synth.setParam('ampAttack', this.audioParams.attackDuration);
