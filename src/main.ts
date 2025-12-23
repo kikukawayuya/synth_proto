@@ -32,38 +32,6 @@ const keyboardMap: Record<string, number> = {
 
 const activeKeys: Set<string> = new Set();
 
-/**
- * Load lead pattern - simple melody
- */
-function loadLeadPattern(channel: Channel): void {
-    const seq = channel.getSequencer();
-    seq.clearAll();
-
-    // Simple melody pattern (E4, G4, A4, B4 repeating)
-    const melody = [64, 67, 69, 71, 72, 71, 69, 67];
-    melody.forEach((note, i) => {
-        seq.addNote(i * 2, note, 90, 0.5);
-    });
-}
-
-/**
- * Load bass pattern - root notes
- */
-function loadBassPattern(channel: Channel): void {
-    const seq = channel.getSequencer();
-    seq.clearAll();
-
-    // Bass pattern (C2, A1, F1, G1 - following chord progression)
-    const bass = [
-        { step: 0, note: 36 },   // C2
-        { step: 4, note: 33 },   // A1
-        { step: 8, note: 29 },   // F1
-        { step: 12, note: 31 },  // G1
-    ];
-    bass.forEach(({ step, note }) => {
-        seq.addNote(step, note, 100, 0.8);
-    });
-}
 
 /**
  * Inject component styles
@@ -90,20 +58,9 @@ async function init() {
 
         await channelManager.initMaster();
 
-        // Try to load saved project first
-        const loaded = await channelManager.loadFromLocalStorage();
-
-        if (!loaded) {
-            // Create 3 channels with different patterns
-            const channel1 = await channelManager.createChannel('Pad');
-            channel1.getSequencer().loadDemoPattern();
-
-            const channel2 = await channelManager.createChannel('Lead');
-            loadLeadPattern(channel2);
-
-            const channel3 = await channelManager.createChannel('Bass');
-            loadBassPattern(channel3);
-        }
+        // Load Sleep Drone by default (optimal for JITAI research)
+        const { generateDroneProject } = await import('./utils/droneGenerator');
+        await generateDroneProject(channelManager);
 
         if (startBtn) {
             startBtn.textContent = '✓ Audio Running';
@@ -146,23 +103,8 @@ async function init() {
         // Setup Master Section (Volume + EQ)
         setupMasterSection();
 
-        // Add Drone Generator Button (Dev/Hidden feature)
-        const header = document.querySelector('header');
-        if (header) {
-            const droneBtn = document.createElement('button');
-            droneBtn.textContent = '🌙 Sleep Drone';
-            droneBtn.style.cssText = 'margin-left: 20px; background: #2a3540; border: 1px solid #4a90b8; color: #4a90b8; padding: 4px 12px; border-radius: 4px; cursor: pointer;';
-            droneBtn.addEventListener('click', async () => {
-                const { generateDroneProject } = await import('./utils/droneGenerator');
-                await generateDroneProject(channelManager);
-                channelStripUI.render();
-                // Select first channel
-                const firstId = channelManager.getAllChannels()[0]?.id;
-                if (firstId) channelManager.selectChannel(firstId);
-                showNotification('Sleepy Drone Ambient Loaded 🌙');
-            });
-            header.appendChild(droneBtn);
-        }
+        // Auto-play the drone
+        channelManager.play();
     }
 
     // Click handler
