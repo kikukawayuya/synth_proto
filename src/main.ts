@@ -11,6 +11,7 @@ import { PianoRoll, pianoRollStyles } from './ui/PianoRoll';
 import { ChannelStripUI, channelStripStyles } from './ui/ChannelStrip';
 import { JitaiController, JitaiPanel, jitaiPanelStyles } from './jitai';
 import { MasterSection, masterSectionStyles } from './ui/MasterSection';
+import { JitaiVisualization, jitaiVisualizationStyles } from './ui/JitaiVisualization';
 
 // Global instances
 let channelManager: ChannelManager;
@@ -18,7 +19,9 @@ let channelStripUI: ChannelStripUI;
 let pianoRoll: PianoRoll | null = null;
 let jitaiController: JitaiController | null = null;
 let jitaiPanel: JitaiPanel | null = null;
+let jitaiVisualization: JitaiVisualization | null = null;
 let masterSection: MasterSection | null = null;
+let synthPopup: HTMLElement | null = null;
 const knobs: Map<string, RotaryKnob> = new Map();
 
 // Keyboard mapping (computer keyboard to MIDI notes)
@@ -38,9 +41,70 @@ const activeKeys: Set<string> = new Set();
  */
 function injectStyles(): void {
     const style = document.createElement('style');
-    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles + '\n' + channelStripStyles + '\n' + jitaiPanelStyles + '\n' + masterSectionStyles;
+    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles + '\n' + channelStripStyles + '\n' + jitaiPanelStyles + '\n' + masterSectionStyles + '\n' + jitaiVisualizationStyles + '\n' + synthPopupStyles;
     document.head.appendChild(style);
 }
+
+// Synth popup styles
+const synthPopupStyles = `
+.synth-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.synth-popup {
+    background: linear-gradient(135deg, #1a2530 0%, #0d1520 100%);
+    border: 1px solid #3a5570;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: #c8d4e0;
+}
+
+.synth-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #3a5570;
+}
+
+.synth-popup-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4a90b8;
+}
+
+.synth-popup-close {
+    background: none;
+    border: none;
+    color: #6a8aa8;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.synth-popup-close:hover {
+    color: #e06040;
+}
+
+.synth-popup-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+`;
 
 /**
  * Initialize the application
@@ -151,6 +215,11 @@ function setupChannelStrips(): void {
         updateSynthControlsForChannel(channel);
     });
 
+    // Handle synth popup open
+    channelStripUI.setOnSynthOpen((channel) => {
+        openSynthPopup(channel);
+    });
+
     // Listen for channel changes
     channelManager.setOnSelectionChange((channelId) => {
         const channel = channelId ? channelManager.getChannel(channelId) : null;
@@ -160,6 +229,62 @@ function setupChannelStrips(): void {
             updateSynthControlsForChannel(channel);
         }
     });
+}
+
+/**
+ * Open synth popup for a channel
+ */
+function openSynthPopup(channel: Channel): void {
+    // Close existing popup
+    closeSynthPopup();
+
+    // Get synth section from DOM
+    const synthSection = document.querySelector('.synth-section');
+    if (!synthSection) return;
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'synth-popup-overlay';
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeSynthPopup();
+    });
+
+    // Create popup
+    const popup = document.createElement('div');
+    popup.className = 'synth-popup';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'synth-popup-header';
+    header.innerHTML = `
+        <span class="synth-popup-title">Synth: ${channel.name}</span>
+        <button class="synth-popup-close">&times;</button>
+    `;
+    header.querySelector('.synth-popup-close')?.addEventListener('click', closeSynthPopup);
+    popup.appendChild(header);
+
+    // Clone synth section content
+    const content = document.createElement('div');
+    content.className = 'synth-popup-content';
+    content.innerHTML = synthSection.innerHTML;
+    popup.appendChild(content);
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    synthPopup = overlay;
+
+    // Update knobs in popup to reflect this channel's settings
+    updateSynthControlsForChannel(channel);
+}
+
+/**
+ * Close synth popup
+ */
+function closeSynthPopup(): void {
+    if (synthPopup) {
+        synthPopup.remove();
+        synthPopup = null;
+    }
 }
 
 /**
@@ -512,11 +637,25 @@ function setupJitaiPanel(): void {
     // Create JITAI controller
     jitaiController = new JitaiController(channelManager);
 
-    // Create JITAI panel UI
+    // Create JITAI panel UI (input controls on the right)
     jitaiPanel = new JitaiPanel(jitaiController);
-
-    // Add panel to DOM
     document.body.appendChild(jitaiPanel.getElement());
+
+    // Create JITAI visualization panel (replace synth section)
+    jitaiVisualization = new JitaiVisualization(jitaiController);
+
+    // Insert visualization panel where synth section was
+    const synthSection = document.querySelector('.synth-section');
+    if (synthSection) {
+        // Hide the original synth section (keep for popup)
+        (synthSection as HTMLElement).style.display = 'none';
+
+        // Insert visualization panel before mixer section
+        const mixerSection = document.querySelector('.mixer-section');
+        if (mixerSection && mixerSection.parentElement) {
+            mixerSection.parentElement.insertBefore(jitaiVisualization.getElement(), mixerSection);
+        }
+    }
 
     // Expose for debugging
     (window as any).jitaiController = jitaiController;

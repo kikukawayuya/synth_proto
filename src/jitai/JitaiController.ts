@@ -92,37 +92,53 @@ export class JitaiController {
 
     /**
      * シンセにパラメータを適用
+     * プリセット変更が音楽的に明確に聞こえるように設計
      */
     private applyToSynth(): void {
         const channels = this.channelManager.getAllChannels();
+        const relaxation = this.getRelaxation();
+        const sleepiness = this.getSleepReadiness();
 
         channels.forEach(channel => {
             const synth = channel.getSynth();
 
-            // フィルター関連 (発振防止のため最小値を設定)
-            const cutoff = Math.max(200, this.audioParams.droneFilterCutoff);
+            // フィルターカットオフ: リラックス度に応じて大きく変化 (2000Hz → 400Hz)
+            const cutoff = Math.max(400, 2000 - relaxation * 1600);
             synth.setParam('filterCutoff', cutoff);
-            // レゾナンスは発振防止のため低めに制限
-            synth.setParam('filterRes', Math.min(0.15, this.audioParams.filterLfoDepth * 0.3));
 
-            // LFO関連 (適度な範囲に制限)
-            synth.setParam('lfo1Rate', Math.max(0.01, Math.min(0.5, this.audioParams.filterLfoRate)));
-            synth.setParam('lfo1Amount', Math.min(0.3, this.audioParams.filterLfoDepth * 0.5));
+            // フィルターレゾナンス: 安全範囲内で変化
+            synth.setParam('filterRes', 0.05 + relaxation * 0.1);
 
-            // エンベロープ
-            synth.setParam('ampAttack', this.audioParams.attackDuration);
-            synth.setParam('ampRelease', this.audioParams.releaseDuration);
+            // LFO: フィルターへのゆらぎ効果
+            synth.setParam('lfo1Rate', 0.05 + (1 - relaxation) * 0.15);  // ゆっくり→速く
+            synth.setParam('lfo1Amount', 0.1 + relaxation * 0.15);       // LFO深さ
+            synth.setParam('lfo1Target', 'filter');
 
-            // エフェクト
-            synth.setParam('reverbMix', this.audioParams.reverbMix / 100);
-            synth.setParam('chorusMix', this.audioParams.chorusMix);
-            synth.setParam('chorusRate', this.audioParams.chorusRate);
+            // エンベロープ: 眠気に応じてアタック/リリースを長く
+            const attack = 1 + sleepiness * 8;   // 1秒 → 9秒
+            const release = 2 + sleepiness * 10; // 2秒 → 12秒
+            synth.setParam('ampAttack', attack);
+            synth.setParam('ampRelease', release);
+
+            // エフェクト: 眠気に応じてリバーブを深く
+            const reverbMix = 0.2 + sleepiness * 0.4;  // 20% → 60%
+            synth.setParam('longReverbDryWet', reverbMix);
+            synth.setParam('longReverbDecay', 4 + sleepiness * 12);  // 4秒 → 16秒
+
+            // コーラス: リラックス度に応じて深く
+            synth.setParam('chorusMix', 0.1 + relaxation * 0.25);
+            synth.setParam('chorusRate', 0.3 - relaxation * 0.2);  // ゆっくりに
         });
 
-        // BPMを睡眠準備度に応じて調整（オプション）
-        const sleepiness = this.getSleepReadiness();
-        const bpm = Math.round(120 - sleepiness * 84); // 120→36
+        // BPMを睡眠準備度に応じて調整（60-120の範囲で）
+        const bpm = Math.round(120 - sleepiness * 60); // 120→60 (最低60BPMを維持)
         this.channelManager.setBpm(bpm);
+
+        // UIのBPM表示も更新
+        const bpmInput = document.getElementById('bpm') as HTMLInputElement;
+        if (bpmInput) {
+            bpmInput.value = String(bpm);
+        }
     }
 
     // MARK: - プリセット

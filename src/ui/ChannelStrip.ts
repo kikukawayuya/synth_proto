@@ -10,6 +10,7 @@ export class ChannelStripUI {
     private container: HTMLElement;
     private channelManager: ChannelManager;
     private onSelect: ((channel: Channel) => void) | null = null;
+    private onSynthOpen: ((channel: Channel) => void) | null = null;
     private animationFrame: number | null = null;
     private levelMeters: Map<number, HTMLElement> = new Map();
 
@@ -190,6 +191,19 @@ export class ChannelStripUI {
 
         strip.appendChild(panSection);
 
+        // Synth button (opens synth panel popup)
+        const synthBtn = document.createElement('button');
+        synthBtn.className = 'channel-synth-btn';
+        synthBtn.innerHTML = '⚙';
+        synthBtn.title = 'Open Synth Settings';
+        synthBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.onSynthOpen) {
+                this.onSynthOpen(channel);
+            }
+        });
+        strip.appendChild(synthBtn);
+
         // Delete button (hidden, shows on hover)
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'channel-delete';
@@ -273,6 +287,13 @@ export class ChannelStripUI {
      */
     setOnSelect(callback: (channel: Channel) => void): void {
         this.onSelect = callback;
+    }
+
+    /**
+     * Set synth open callback
+     */
+    setOnSynthOpen(callback: (channel: Channel) => void): void {
+        this.onSynthOpen = callback;
     }
 
     destroy(): void {
@@ -522,6 +543,24 @@ export const channelStripStyles = `
     font-size: 8px;
     color: #666;
     margin-top: 2px;
+}
+
+.channel-synth-btn {
+    width: calc(100% - 8px);
+    padding: 6px;
+    margin: 4px;
+    border: none;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #3a4250 0%, #2a3240 100%);
+    color: #8a9aa8;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.channel-synth-btn:hover {
+    background: linear-gradient(180deg, #4a5260 0%, #3a4250 100%);
+    color: #4a90b8;
 }
 
 .channel-delete {
