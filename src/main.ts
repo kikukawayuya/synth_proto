@@ -9,11 +9,14 @@ import { ES2_PURITY_PRESET, INIT_PRESET } from './synth/Preset';
 import { RotaryKnob, rotaryKnobStyles } from './ui/RotaryKnob';
 import { PianoRoll, pianoRollStyles } from './ui/PianoRoll';
 import { ChannelStripUI, channelStripStyles } from './ui/ChannelStrip';
+import { JitaiController, JitaiPanel, jitaiPanelStyles } from './jitai';
 
 // Global instances
 let channelManager: ChannelManager;
 let channelStripUI: ChannelStripUI;
 let pianoRoll: PianoRoll | null = null;
+let jitaiController: JitaiController | null = null;
+let jitaiPanel: JitaiPanel | null = null;
 const knobs: Map<string, RotaryKnob> = new Map();
 
 // Keyboard mapping (computer keyboard to MIDI notes)
@@ -65,7 +68,7 @@ function loadBassPattern(channel: Channel): void {
  */
 function injectStyles(): void {
     const style = document.createElement('style');
-    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles + '\n' + channelStripStyles;
+    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles + '\n' + channelStripStyles + '\n' + jitaiPanelStyles;
     document.head.appendChild(style);
 }
 
@@ -134,6 +137,9 @@ async function init() {
 
         // Expose for debugging/verification
         (window as any).channelManager = channelManager;
+
+        // Setup JITAI Research Panel
+        setupJitaiPanel();
 
         // Add Drone Generator Button (Dev/Hidden feature)
         const header = document.querySelector('header');
@@ -544,6 +550,25 @@ function showNotification(message: string): void {
 
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 2000);
+}
+
+/**
+ * Setup JITAI Research Panel
+ */
+function setupJitaiPanel(): void {
+    // Create JITAI controller
+    jitaiController = new JitaiController(channelManager);
+
+    // Create JITAI panel UI
+    jitaiPanel = new JitaiPanel(jitaiController);
+
+    // Add panel to DOM
+    document.body.appendChild(jitaiPanel.getElement());
+
+    // Expose for debugging
+    (window as any).jitaiController = jitaiController;
+
+    console.log('JITAI Research Panel initialized');
 }
 
 /**
