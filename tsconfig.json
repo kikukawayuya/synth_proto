@@ -18,5 +18,8 @@
     "include": [
         "src/**/*.ts",
         "src/**/*.d.ts"
+    ],
+    "exclude": [
+        "src/worklet/**/*"
     ]
 }
