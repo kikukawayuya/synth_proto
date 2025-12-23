@@ -10,6 +10,7 @@ import { RotaryKnob, rotaryKnobStyles } from './ui/RotaryKnob';
 import { PianoRoll, pianoRollStyles } from './ui/PianoRoll';
 import { ChannelStripUI, channelStripStyles } from './ui/ChannelStrip';
 import { JitaiController, JitaiPanel, jitaiPanelStyles } from './jitai';
+import { MasterSection, masterSectionStyles } from './ui/MasterSection';
 
 // Global instances
 let channelManager: ChannelManager;
@@ -17,6 +18,7 @@ let channelStripUI: ChannelStripUI;
 let pianoRoll: PianoRoll | null = null;
 let jitaiController: JitaiController | null = null;
 let jitaiPanel: JitaiPanel | null = null;
+let masterSection: MasterSection | null = null;
 const knobs: Map<string, RotaryKnob> = new Map();
 
 // Keyboard mapping (computer keyboard to MIDI notes)
@@ -68,7 +70,7 @@ function loadBassPattern(channel: Channel): void {
  */
 function injectStyles(): void {
     const style = document.createElement('style');
-    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles + '\n' + channelStripStyles + '\n' + jitaiPanelStyles;
+    style.textContent = rotaryKnobStyles + '\n' + pianoRollStyles + '\n' + channelStripStyles + '\n' + jitaiPanelStyles + '\n' + masterSectionStyles;
     document.head.appendChild(style);
 }
 
@@ -141,6 +143,9 @@ async function init() {
         // Setup JITAI Research Panel
         setupJitaiPanel();
 
+        // Setup Master Section (Volume + EQ)
+        setupMasterSection();
+
         // Add Drone Generator Button (Dev/Hidden feature)
         const header = document.querySelector('header');
         if (header) {
@@ -165,6 +170,12 @@ async function init() {
 
     // Spacebar handler - toggle play/stop
     document.addEventListener('keydown', (e) => {
+        // Ignore if focus is on input elements
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+            return;
+        }
+
         if (e.code === 'Space') {
             e.preventDefault();
             if (channelManager.getChannelCount() === 0) {
@@ -569,6 +580,15 @@ function setupJitaiPanel(): void {
     (window as any).jitaiController = jitaiController;
 
     console.log('JITAI Research Panel initialized');
+}
+
+/**
+ * Setup Master Section (Volume + EQ)
+ */
+function setupMasterSection(): void {
+    masterSection = new MasterSection(channelManager);
+    document.body.appendChild(masterSection.getElement());
+    console.log('Master Section initialized');
 }
 
 /**

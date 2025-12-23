@@ -28,6 +28,11 @@ export class ChannelManager {
     private masterGain: GainNode | null = null;
     private masterAnalyser: AnalyserNode | null = null;
 
+    // 3-band EQ
+    private eqLow: BiquadFilterNode | null = null;
+    private eqMid: BiquadFilterNode | null = null;
+    private eqHigh: BiquadFilterNode | null = null;
+
     private onChannelChange: (() => void) | null = null;
     private onSelectionChange: ((channelId: number | null) => void) | null = null;
     private onTransportChange: ((isPlaying: boolean) => void) | null = null;
@@ -40,12 +45,33 @@ export class ChannelManager {
     async initMaster(): Promise<void> {
         this.masterContext = new AudioContext();
 
+        // Create 3-band EQ
+        this.eqLow = this.masterContext.createBiquadFilter();
+        this.eqLow.type = 'lowshelf';
+        this.eqLow.frequency.value = 320;
+        this.eqLow.gain.value = 0;
+
+        this.eqMid = this.masterContext.createBiquadFilter();
+        this.eqMid.type = 'peaking';
+        this.eqMid.frequency.value = 1000;
+        this.eqMid.Q.value = 0.5;
+        this.eqMid.gain.value = 0;
+
+        this.eqHigh = this.masterContext.createBiquadFilter();
+        this.eqHigh.type = 'highshelf';
+        this.eqHigh.frequency.value = 3200;
+        this.eqHigh.gain.value = 0;
+
         this.masterGain = this.masterContext.createGain();
-        this.masterGain.gain.value = 0.8;
+        this.masterGain.gain.value = 1.0;
 
         this.masterAnalyser = this.masterContext.createAnalyser();
         this.masterAnalyser.fftSize = 2048;
 
+        // Connect: EQ -> MasterGain -> Analyser -> Destination
+        this.eqLow.connect(this.eqMid);
+        this.eqMid.connect(this.eqHigh);
+        this.eqHigh.connect(this.masterGain);
         this.masterGain.connect(this.masterAnalyser);
         this.masterAnalyser.connect(this.masterContext.destination);
 
@@ -73,9 +99,9 @@ export class ChannelManager {
 
         const channel = new Channel(config);
 
-        // Initialize with shared audio context and connect to master
-        if (this.masterContext && this.masterGain) {
-            await channel.init(this.masterContext, this.masterGain);
+        // Initialize with shared audio context and connect to EQ input
+        if (this.masterContext && this.eqLow) {
+            await channel.init(this.masterContext, this.eqLow);
         } else {
             await channel.init();
         }
@@ -377,6 +403,62 @@ export class ChannelManager {
      */
     getMasterContext(): AudioContext | null {
         return this.masterContext;
+    }
+
+    /**
+     * Set master volume (0-2, 1 = unity gain)
+     */
+    setMasterVolume(value: number): void {
+        if (this.masterGain) {
+            this.masterGain.gain.value = Math.max(0, Math.min(2, value));
+        }
+    }
+
+    /**
+     * Get master volume
+     */
+    getMasterVolume(): number {
+        return this.masterGain?.gain.value ?? 1;
+    }
+
+    /**
+     * Set EQ band gain (-12 to +12 dB)
+     */
+    setEqBand(band: 'low' | 'mid' | 'high', gain: number): void {
+        const clampedGain = Math.max(-12, Math.min(12, gain));
+        switch (band) {
+            case 'low':
+                if (this.eqLow) this.eqLow.gain.value = clampedGain;
+                break;
+            case 'mid':
+                if (this.eqMid) this.eqMid.gain.value = clampedGain;
+                break;
+            case 'high':
+                if (this.eqHigh) this.eqHigh.gain.value = clampedGain;
+                break;
+        }
+    }
+
+    /**
+     * Get EQ band gain
+     */
+    getEqBand(band: 'low' | 'mid' | 'high'): number {
+        switch (band) {
+            case 'low': return this.eqLow?.gain.value ?? 0;
+            case 'mid': return this.eqMid?.gain.value ?? 0;
+            case 'high': return this.eqHigh?.gain.value ?? 0;
+        }
+    }
+
+    /**
+     * Get all EQ values
+     */
+    getEqValues(): { low: number; mid: number; high: number } {
+        return {
+            low: this.eqLow?.gain.value ?? 0,
+            mid: this.eqMid?.gain.value ?? 0,
+            high: this.eqHigh?.gain.value ?? 0
+        };
     }
 }
 
