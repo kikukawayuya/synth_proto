@@ -3,7 +3,7 @@
  * Like Logic Pro's mixer/arrangement view
  */
 
-import { Channel, ChannelConfig } from './Channel';
+import { Channel, ChannelConfig, ChannelSaveData } from './Channel';
 
 // Default channel colors (Logic Pro inspired)
 const CHANNEL_COLORS = [
@@ -48,6 +48,14 @@ export class ChannelManager {
 
         this.masterGain.connect(this.masterAnalyser);
         this.masterAnalyser.connect(this.masterContext.destination);
+
+        // Load AudioWorklet module once for all channels
+        try {
+            await this.masterContext.audioWorklet.addModule('/src/worklet/voice-processor-bundle.js');
+            console.log('AudioWorklet module loaded');
+        } catch (e) {
+            console.warn('AudioWorklet failed, using fallback...', e);
+        }
     }
 
     /**
@@ -64,11 +72,12 @@ export class ChannelManager {
         };
 
         const channel = new Channel(config);
-        await channel.init();
 
-        // Connect to master if available
-        if (this.masterGain) {
-            channel.connectToMaster(this.masterGain);
+        // Initialize with shared audio context and connect to master
+        if (this.masterContext && this.masterGain) {
+            await channel.init(this.masterContext, this.masterGain);
+        } else {
+            await channel.init();
         }
 
         // Set BPM
@@ -285,4 +294,95 @@ export class ChannelManager {
             this.masterContext.close();
         }
     }
+
+    /**
+     * Export all channel data for saving
+     */
+    exportAllData(): ProjectSaveData {
+        const channelsData: ChannelSaveData[] = [];
+        this.channels.forEach(channel => {
+            channelsData.push(channel.exportData());
+        });
+
+        return {
+            version: 1,
+            bpm: this._bpm,
+            selectedChannelId: this._selectedChannelId,
+            channels: channelsData
+        };
+    }
+
+    /**
+     * Save to localStorage
+     */
+    saveToLocalStorage(key: string = 'es2-synth-project'): void {
+        const data = this.exportAllData();
+        localStorage.setItem(key, JSON.stringify(data));
+        console.log('Project saved to localStorage');
+    }
+
+    /**
+     * Load from localStorage
+     */
+    async loadFromLocalStorage(key: string = 'es2-synth-project'): Promise<boolean> {
+        const saved = localStorage.getItem(key);
+        if (!saved) return false;
+
+        try {
+            const data: ProjectSaveData = JSON.parse(saved);
+            await this.importAllData(data);
+            console.log('Project loaded from localStorage');
+            return true;
+        } catch (e) {
+            console.error('Failed to load project:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Import all channel data
+     */
+    async importAllData(data: ProjectSaveData): Promise<void> {
+        // Clear existing channels
+        this.channels.forEach(channel => channel.destroy());
+        this.channels.clear();
+
+        // Set global settings
+        this._bpm = data.bpm || 120;
+
+        // Recreate channels with saved data
+        for (const channelData of data.channels) {
+            const channel = await this.createChannel(channelData.name);
+            channel.importData(channelData);
+        }
+
+        // Restore selection
+        if (data.selectedChannelId && this.channels.has(data.selectedChannelId)) {
+            this._selectedChannelId = data.selectedChannelId;
+        }
+
+        this.notifyChannelChange();
+        this.notifySelectionChange();
+    }
+
+    /**
+     * Check if saved data exists
+     */
+    hasSavedData(key: string = 'es2-synth-project'): boolean {
+        return localStorage.getItem(key) !== null;
+    }
+
+    /**
+     * Get master audio context
+     */
+    getMasterContext(): AudioContext | null {
+        return this.masterContext;
+    }
+}
+
+export interface ProjectSaveData {
+    version: number;
+    bpm: number;
+    selectedChannelId: number | null;
+    channels: ChannelSaveData[];
 }

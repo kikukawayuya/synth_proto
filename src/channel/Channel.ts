@@ -50,8 +50,8 @@ export class Channel {
     /**
      * Initialize the channel's audio engine
      */
-    async init(masterOutput?: AudioNode): Promise<void> {
-        await this.synth.init();
+    async init(sharedContext?: AudioContext, masterOutput?: AudioNode): Promise<void> {
+        await this.synth.init(sharedContext);
 
         const ctx = this.synth.getAudioContext();
         if (!ctx) return;
@@ -63,7 +63,7 @@ export class Channel {
         this.panNode = ctx.createStereoPanner();
         this.panNode.pan.value = this._pan;
 
-        // Get synth output (master gain) and disconnect from destination
+        // Get synth output (analyser) and disconnect from destination
         const analyser = this.synth.getAnalyser();
         if (analyser) {
             // Reconnect through channel strip
@@ -207,4 +207,47 @@ export class Channel {
             this.panNode.disconnect();
         }
     }
+
+    /**
+     * Export channel data for saving
+     */
+    exportData(): ChannelSaveData {
+        return {
+            id: this.id,
+            name: this._name,
+            color: this._color,
+            muted: this._muted,
+            solo: this._solo,
+            volume: this._volume,
+            pan: this._pan,
+            synthParams: this.synth.getParams(),
+            sequencerData: this.sequencer.exportData()
+        };
+    }
+
+    /**
+     * Import channel data from saved state
+     */
+    importData(data: Partial<ChannelSaveData>): void {
+        if (data.name) this._name = data.name;
+        if (data.color) this._color = data.color;
+        if (data.muted !== undefined) this.muted = data.muted;
+        if (data.solo !== undefined) this.solo = data.solo;
+        if (data.volume !== undefined) this.volume = data.volume;
+        if (data.pan !== undefined) this.pan = data.pan;
+        if (data.synthParams) this.synth.setParams(data.synthParams);
+        if (data.sequencerData) this.sequencer.importData(data.sequencerData);
+    }
+}
+
+export interface ChannelSaveData {
+    id: number;
+    name: string;
+    color: string;
+    muted: boolean;
+    solo: boolean;
+    volume: number;
+    pan: number;
+    synthParams: Record<string, any>;
+    sequencerData: { steps: any[], length: number, swing: number };
 }

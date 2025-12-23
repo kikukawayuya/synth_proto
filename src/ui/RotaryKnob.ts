@@ -158,6 +158,16 @@ export class RotaryKnob {
         return this.value;
     }
 
+    /**
+     * Set value without triggering onChange callback
+     */
+    setValueSilent(newValue: number): void {
+        this.value = Math.max(this.min, Math.min(this.max, newValue));
+        this.value = Math.round(this.value / this.step) * this.step;
+        this.input.value = String(this.value);
+        this.updateVisual();
+    }
+
     private updateVisual(): void {
         // Calculate rotation angle (270 degree range, from -135 to +135)
         const normalized = (this.value - this.min) / (this.max - this.min);

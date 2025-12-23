@@ -364,4 +364,37 @@ export class Sequencer {
             this.steps[stepIndex].notes = [];
         }
     }
+
+    /**
+     * Export sequencer data for saving
+     */
+    exportData(): { steps: Step[], length: number, swing: number } {
+        return {
+            steps: JSON.parse(JSON.stringify(this.steps)),
+            length: this.length,
+            swing: this._swing
+        };
+    }
+
+    /**
+     * Import sequencer data from saved state
+     */
+    importData(data: { steps: Step[], length?: number, swing?: number }): void {
+        if (data.steps) {
+            this.steps = data.steps;
+        }
+        if (data.length) {
+            this.length = data.length as 16 | 32 | 64 | 128;
+        }
+        if (data.swing !== undefined) {
+            this._swing = data.swing;
+        }
+    }
+
+    /**
+     * Get swing value
+     */
+    getSwing(): number {
+        return this._swing;
+    }
 }

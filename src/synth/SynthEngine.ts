@@ -39,11 +39,18 @@ export class SynthEngine {
 
     // State
     private initialized: boolean = false;
+    private ownsAudioContext: boolean = false;
 
-    async init(): Promise<void> {
+    async init(sharedContext?: AudioContext): Promise<void> {
         if (this.initialized) return;
 
-        this.audioContext = new AudioContext();
+        if (sharedContext) {
+            this.audioContext = sharedContext;
+            this.ownsAudioContext = false;
+        } else {
+            this.audioContext = new AudioContext();
+            this.ownsAudioContext = true;
+        }
 
         // Create master chain
         this.masterGain = this.audioContext.createGain();
@@ -61,21 +68,26 @@ export class SynthEngine {
         this.reverb = new Reverb(this.audioContext);
         this.longReverb = new LongReverb(this.audioContext);
 
-        // Connect: voices -> EQ -> Chorus -> LongReverb -> Master -> Analyser -> Destination
+        // Connect: voices -> EQ -> Chorus -> LongReverb -> Master -> Analyser
+        // Note: Analyser will be connected to destination or channel strip externally
         this.voiceMixer.connect(this.eq.getInput());
         this.eq.getOutput().connect(this.chorus.getInput());
         this.chorus.getOutput().connect(this.longReverb.getInput());
         this.longReverb.getOutput().connect(this.masterGain);
         this.masterGain.connect(this.analyser);
-        this.analyser.connect(this.audioContext.destination);
 
-        // Load the AudioWorklet module
-        // Note: We need to bundle the worklet separately
-        try {
-            await this.audioContext.audioWorklet.addModule('/src/worklet/voice-processor-bundle.js');
-        } catch (e) {
-            console.warn('AudioWorklet failed, using fallback...', e);
-            // Fallback will be native oscillators
+        // Only connect to destination if we own the context (standalone mode)
+        if (this.ownsAudioContext) {
+            this.analyser.connect(this.audioContext.destination);
+        }
+
+        // Load the AudioWorklet module (only if we own the context, otherwise assume it's already loaded)
+        if (this.ownsAudioContext) {
+            try {
+                await this.audioContext.audioWorklet.addModule('/src/worklet/voice-processor-bundle.js');
+            } catch (e) {
+                console.warn('AudioWorklet failed, using fallback...', e);
+            }
         }
 
         // Apply default preset
@@ -374,6 +386,22 @@ export class SynthEngine {
     }
 
     /**
+     * Get current parameters
+     */
+    getParams(): Record<string, any> {
+        return { ...this.currentParams };
+    }
+
+    /**
+     * Set all parameters at once (for loading saved state)
+     */
+    setParams(params: Record<string, any>): void {
+        Object.entries(params).forEach(([key, value]) => {
+            this.setParam(key, value);
+        });
+    }
+
+    /**
      * All notes off
      */
     allNotesOff(): void {
@@ -392,7 +420,8 @@ export class SynthEngine {
         if (this.reverb) this.reverb.destroy();
         if (this.eq) this.eq.destroy();
 
-        if (this.audioContext) {
+        // Only close AudioContext if we own it (not shared)
+        if (this.audioContext && this.ownsAudioContext) {
             this.audioContext.close();
         }
 

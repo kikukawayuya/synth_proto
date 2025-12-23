@@ -28,6 +28,39 @@ const keyboardMap: Record<string, number> = {
 const activeKeys: Set<string> = new Set();
 
 /**
+ * Load lead pattern - simple melody
+ */
+function loadLeadPattern(channel: Channel): void {
+    const seq = channel.getSequencer();
+    seq.clearAll();
+
+    // Simple melody pattern (E4, G4, A4, B4 repeating)
+    const melody = [64, 67, 69, 71, 72, 71, 69, 67];
+    melody.forEach((note, i) => {
+        seq.addNote(i * 2, note, 90, 0.5);
+    });
+}
+
+/**
+ * Load bass pattern - root notes
+ */
+function loadBassPattern(channel: Channel): void {
+    const seq = channel.getSequencer();
+    seq.clearAll();
+
+    // Bass pattern (C2, A1, F1, G1 - following chord progression)
+    const bass = [
+        { step: 0, note: 36 },   // C2
+        { step: 4, note: 33 },   // A1
+        { step: 8, note: 29 },   // F1
+        { step: 12, note: 31 },  // G1
+    ];
+    bass.forEach(({ step, note }) => {
+        seq.addNote(step, note, 100, 0.8);
+    });
+}
+
+/**
  * Inject component styles
  */
 function injectStyles(): void {
@@ -46,40 +79,100 @@ async function init() {
 
     // Wait for user interaction before starting audio
     const startBtn = document.getElementById('start-audio');
-    if (startBtn) {
-        startBtn.addEventListener('click', async () => {
-            await channelManager.initMaster();
 
-            // Create first channel
+    async function startAudio() {
+        if (channelManager.getChannelCount() > 0) return; // Already started
+
+        await channelManager.initMaster();
+
+        // Try to load saved project first
+        const loaded = await channelManager.loadFromLocalStorage();
+
+        if (!loaded) {
+            // Create 3 channels with different patterns
             const channel1 = await channelManager.createChannel('Pad');
             channel1.getSequencer().loadDemoPattern();
 
+            const channel2 = await channelManager.createChannel('Lead');
+            loadLeadPattern(channel2);
+
+            const channel3 = await channelManager.createChannel('Bass');
+            loadBassPattern(channel3);
+        }
+
+        if (startBtn) {
             startBtn.textContent = '✓ Audio Running';
             startBtn.classList.add('active');
             (startBtn as HTMLButtonElement).disabled = true;
+        }
 
-            // Update power indicator
-            const powerIndicator = document.getElementById('power-indicator');
-            if (powerIndicator) {
-                powerIndicator.classList.add('active');
-            }
+        // Update power indicator
+        const powerIndicator = document.getElementById('power-indicator');
+        if (powerIndicator) {
+            powerIndicator.classList.add('active');
+        }
 
-            // Setup UI
-            setupChannelStrips();
-            setupRotaryKnobs();
-            setupToggles();
-            setupKeyboard();
-            setupPianoRollForChannel(channel1);
-            setupTransportControls();
-            setupPresets();
-            setupVisualizer();
+        // Setup UI
+        setupChannelStrips();
+        setupRotaryKnobs();
+        setupToggles();
+        setupKeyboard();
 
-            // Start animation loop
-            requestAnimationFrame(updateLoop);
+        // Setup piano roll for the selected channel
+        const selectedChannel = channelManager.getSelectedChannel();
+        if (selectedChannel) {
+            setupPianoRollForChannel(selectedChannel);
+            updateSynthControlsForChannel(selectedChannel);
+        }
 
-            console.log('Multi-channel synth ready!');
-        });
+        setupTransportControls();
+        setupPresets();
+        setupVisualizer();
+
+        // Start animation loop
+        requestAnimationFrame(updateLoop);
+
+        // Expose for debugging/verification
+        (window as any).channelManager = channelManager;
+
+        // Add Drone Generator Button (Dev/Hidden feature)
+        const header = document.querySelector('header');
+        if (header) {
+            const droneBtn = document.createElement('button');
+            droneBtn.textContent = '🌙 Sleep Drone';
+            droneBtn.style.cssText = 'margin-left: 20px; background: #2a3540; border: 1px solid #4a90b8; color: #4a90b8; padding: 4px 12px; border-radius: 4px; cursor: pointer;';
+            droneBtn.addEventListener('click', async () => {
+                const { generateDroneProject } = await import('./utils/droneGenerator');
+                await generateDroneProject(channelManager);
+                channelStripUI.render();
+                // Select first channel
+                const firstId = channelManager.getAllChannels()[0]?.id;
+                if (firstId) channelManager.selectChannel(firstId);
+                showNotification('Sleepy Drone Ambient Loaded 🌙');
+            });
+            header.appendChild(droneBtn);
+        }
     }
+
+    // Click handler
+    startBtn?.addEventListener('click', startAudio);
+
+    // Spacebar handler - toggle play/stop
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (channelManager.getChannelCount() === 0) {
+                startAudio();
+            } else {
+                // Toggle play/stop
+                if (channelManager.isPlaying) {
+                    channelManager.stop();
+                } else {
+                    channelManager.play();
+                }
+            }
+        }
+    });
 }
 
 /**
@@ -105,6 +198,7 @@ function setupChannelStrips(): void {
         if (channel) {
             setupPianoRollForChannel(channel);
             updateChannelNameDisplay(channel);
+            updateSynthControlsForChannel(channel);
         }
     });
 }
@@ -124,8 +218,14 @@ function updateChannelNameDisplay(channel: Channel): void {
  * Update synth controls for selected channel
  */
 function updateSynthControlsForChannel(channel: Channel): void {
-    // In future: update knobs to reflect this channel's synth settings
-    // For now, knobs are shared and modify the selected channel
+    const params = channel.getSynth().getParams();
+
+    // Update all knobs to reflect this channel's synth settings
+    knobs.forEach((knob, paramName) => {
+        if (params[paramName] !== undefined) {
+            knob.setValueSilent(params[paramName]);
+        }
+    });
 }
 
 /**
@@ -368,13 +468,82 @@ function setupPresets(): void {
 
         updateKnobsFromPreset();
     });
+
+    // Save/Load project buttons
+    const saveBtn = document.getElementById('project-save');
+    const loadBtn = document.getElementById('project-load');
+
+    saveBtn?.addEventListener('click', () => {
+        channelManager.saveToLocalStorage();
+        showNotification('Project saved!');
+    });
+
+    loadBtn?.addEventListener('click', async () => {
+        if (channelManager.hasSavedData()) {
+            await channelManager.loadFromLocalStorage();
+            channelStripUI.render();
+            const selectedChannel = channelManager.getSelectedChannel();
+            if (selectedChannel) {
+                setupPianoRollForChannel(selectedChannel);
+                updateSynthControlsForChannel(selectedChannel);
+            }
+            showNotification('Project loaded!');
+        } else {
+            showNotification('No saved project found');
+        }
+    });
 }
 
 /**
  * Update knob visuals from current preset
  */
 function updateKnobsFromPreset(): void {
-    // TODO: Update all knobs to match loaded preset values
+    const channel = channelManager.getSelectedChannel();
+    if (channel) {
+        updateSynthControlsForChannel(channel);
+    }
+}
+
+/**
+ * Show a brief notification message
+ */
+function showNotification(message: string): void {
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4a90b8;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 1000;
+        animation: fadeInOut 2s ease-in-out forwards;
+    `;
+
+    // Add animation style if not exists
+    if (!document.getElementById('notification-style')) {
+        const style = document.createElement('style');
+        style.id = 'notification-style';
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateY(-10px); }
+                15% { opacity: 1; transform: translateY(0); }
+                85% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 2000);
 }
 
 /**
