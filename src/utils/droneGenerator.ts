@@ -17,8 +17,8 @@ export async function generateDroneProject(manager: ChannelManager): Promise<voi
         manager.removeChannel(ch.id);
     }
 
-    // Set BPM low for slow movement
-    manager.setBpm(36); // Even slower for deep relaxation
+    // Set BPM low for slow movement (JITAI will adjust based on sleepiness)
+    manager.setBpm(60); // Slow but not too slow for relaxation
 
     // --- Channel 1: Deep Sub Bass ---
     const subChannel = await manager.createChannel('Deep Sub');
