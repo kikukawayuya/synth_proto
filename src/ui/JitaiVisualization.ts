@@ -15,40 +15,14 @@ export const jitaiVisualizationStyles = `
     font-family: 'SF Pro Display', -apple-system, sans-serif;
 }
 
-.jitai-viz-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
 .jitai-viz-title {
     font-size: 16px;
     font-weight: 600;
     color: #4a90b8;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-.jitai-viz-preset-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0e8f0;
-    background: rgba(74, 144, 184, 0.2);
-    padding: 6px 14px;
-    border-radius: 20px;
-    border: 1px solid #3a5570;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.jitai-viz-preset-label {
-    font-size: 10px;
-    color: #6a8aa8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .jitai-viz-grid {
@@ -300,15 +274,9 @@ export class JitaiVisualization {
 
     private render(): void {
         this.container.innerHTML = `
-            <div class="jitai-viz-header">
-                <div class="jitai-viz-title">
-                    <span>🎵</span>
-                    <span>JITAI Audio Parameters</span>
-                </div>
-                <div class="jitai-viz-preset-name">
-                    <span class="jitai-viz-preset-label">Preset:</span>
-                    <span id="current-preset-name">Sleep Drone</span>
-                </div>
+            <div class="jitai-viz-title">
+                <span>🎵</span>
+                <span>JITAI Audio Parameters</span>
             </div>
             <div class="jitai-viz-grid" id="jitai-viz-grid">
                 ${VISUALIZATION_CARDS.map(card => `

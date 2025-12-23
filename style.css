@@ -184,6 +184,31 @@ body {
   font-size: 0.75rem;
 }
 
+.btn-nav {
+  padding: var(--spacing-xs) 10px;
+  font-size: 0.85rem;
+  min-width: 32px;
+}
+
+.preset-name-display {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: rgba(74, 144, 184, 0.2);
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-width: 140px;
+  text-align: center;
+}
+
+.project-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
 .btn .icon {
   font-size: 0.85em;
 }

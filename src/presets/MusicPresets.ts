@@ -1,6 +1,6 @@
 /**
  * Relaxation & Sleep Music Presets
- * 10 unique ambient soundscapes for JITAI sleep research
+ * 20 unique ambient soundscapes for JITAI sleep research
  */
 import { ChannelManager } from '../channel/ChannelManager';
 import { Channel } from '../channel/Channel';
@@ -598,6 +598,495 @@ async function setupEternalHorizon(manager: ChannelManager): Promise<void> {
 }
 
 // ============================================
+// Preset 11: Healing Waters
+// ============================================
+async function setupHealingWaters(manager: ChannelManager): Promise<void> {
+    manager.setBpm(42);
+
+    const bass = await manager.createChannel('Deep Pool');
+    bass.getSynth().setParams({
+        osc1Level: 1, osc2Level: 0.4, osc2Semitone: 12,
+        filterCutoff: 160, ampAttack: 4, ampSustain: 1, ampRelease: 5,
+        longReverbDecay: 12, longReverbDryWet: 0.3
+    });
+    bass.volume = 0.6;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [31, 36, 34, 31].forEach((note, i) => bassSq.addNote(i * 32, note, 55, 28));
+
+    const pad = await manager.createChannel('Ripples');
+    pad.getSynth().setParams({
+        osc1Level: 0.5, osc1Detune: -5, osc2Level: 0.5, osc2Detune: 5,
+        filterCutoff: 700, ampAttack: 5, ampSustain: 0.6, ampRelease: 6,
+        chorusMix: 0.45, longReverbDecay: 14, longReverbDryWet: 0.5
+    });
+    pad.volume = 0.45;
+    const padSq = pad.getSequencer();
+    padSq.clearAll();
+    [[55, 59, 62, 67], [48, 52, 55, 60], [50, 54, 57, 62], [55, 59, 62, 67]].forEach((ch, i) => {
+        ch.forEach((n, j) => padSq.addNote(i * 32 + j * 3, n, 48, 26));
+    });
+
+    const drops = await manager.createChannel('Water Drops');
+    drops.getSynth().setParams({
+        osc1Level: 0.5, filterCutoff: 2500,
+        ampAttack: 0.1, ampDecay: 2, ampSustain: 0, ampRelease: 4,
+        longReverbDecay: 18, longReverbDryWet: 0.7
+    });
+    drops.volume = 0.25;
+    drops.pan = 0.2;
+    const dropsSq = drops.getSequencer();
+    dropsSq.clearAll();
+    [8, 20, 44, 60, 76, 100, 116].forEach(step => {
+        dropsSq.addNote(step, 79 + Math.floor(Math.random() * 10), 40, 3);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 12: Winter Cabin
+// ============================================
+async function setupWinterCabin(manager: ChannelManager): Promise<void> {
+    manager.setBpm(50);
+
+    const bass = await manager.createChannel('Fireplace');
+    bass.getSynth().setParams({
+        osc1Level: 0.9, osc2Level: 0.5, osc2Semitone: 12,
+        filterCutoff: 220, ampAttack: 3, ampSustain: 0.9, ampRelease: 4,
+        longReverbDecay: 8, longReverbDryWet: 0.2
+    });
+    bass.volume = 0.6;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [33, 28, 31, 33].forEach((note, i) => bassSq.addNote(i * 32, note, 58, 28));
+
+    const pad = await manager.createChannel('Warm Blanket');
+    pad.getSynth().setParams({
+        osc1Level: 0.55, osc1Detune: -4, osc2Level: 0.55, osc2Detune: 4,
+        osc3Level: 0.3, osc3Semitone: 12,
+        filterCutoff: 550, ampAttack: 5, ampSustain: 0.7, ampRelease: 6,
+        chorusMix: 0.3, longReverbDecay: 10, longReverbDryWet: 0.35
+    });
+    pad.volume = 0.5;
+    const padSq = pad.getSequencer();
+    padSq.clearAll();
+    [[57, 60, 64, 69], [52, 55, 59, 64], [55, 59, 62, 67], [57, 60, 64, 69]].forEach((ch, i) => {
+        ch.forEach((n, j) => padSq.addNote(i * 32 + j * 2, n, 50, 26));
+    });
+
+    const melody = await manager.createChannel('Snow Outside');
+    melody.getSynth().setParams({
+        osc1Level: 0.4, osc2Level: 0.3, osc2Semitone: 12,
+        filterCutoff: 1400, ampAttack: 0.6, ampDecay: 2.5, ampSustain: 0.1, ampRelease: 4,
+        longReverbDecay: 15, longReverbDryWet: 0.6
+    });
+    melody.volume = 0.25;
+    melody.pan = 0.15;
+    const melSq = melody.getSequencer();
+    melSq.clearAll();
+    [[10, 72], [26, 69], [50, 74], [74, 72], [98, 69], [114, 67]].forEach(([step, note]) => {
+        melSq.addNote(step, note, 40, 8);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 13: Misty Mountains
+// ============================================
+async function setupMistyMountains(manager: ChannelManager): Promise<void> {
+    manager.setBpm(36);
+
+    const drone = await manager.createChannel('Mountain Base');
+    drone.getSynth().setParams({
+        osc1Level: 1, osc2Level: 0.6, osc2Semitone: 7,
+        filterCutoff: 280, ampAttack: 6, ampSustain: 1, ampRelease: 8,
+        longReverbDecay: 20, longReverbDryWet: 0.45
+    });
+    drone.volume = 0.55;
+    const droneSq = drone.getSequencer();
+    droneSq.clearAll();
+    droneSq.addNote(0, 28, 60, 60);
+    droneSq.addNote(64, 33, 55, 60);
+
+    const mist = await manager.createChannel('Mist');
+    mist.getSynth().setParams({
+        osc1Level: 0.4, osc1Detune: -8, osc2Level: 0.4, osc2Detune: 8,
+        noiseType: 'pink', noiseLevel: 0.04,
+        filterCutoff: 900, lfo1Rate: 0.04, lfo1Amount: 0.3,
+        ampAttack: 7, ampSustain: 0.5, ampRelease: 8,
+        longReverbDecay: 18, longReverbDryWet: 0.6
+    });
+    mist.volume = 0.35;
+    mist.pan = -0.2;
+    const mistSq = mist.getSequencer();
+    mistSq.clearAll();
+    mistSq.addNote(0, 64, 35, 55);
+    mistSq.addNote(64, 67, 30, 55);
+
+    const peaks = await manager.createChannel('Distant Peaks');
+    peaks.getSynth().setParams({
+        osc1Level: 0.5, osc2Level: 0.4, osc2Semitone: 12,
+        filterCutoff: 1600, ampAttack: 1, ampDecay: 5, ampSustain: 0.1, ampRelease: 8,
+        longReverbDecay: 22, longReverbDryWet: 0.75
+    });
+    peaks.volume = 0.2;
+    peaks.pan = 0.25;
+    const peaksSq = peaks.getSequencer();
+    peaksSq.clearAll();
+    [12, 36, 60, 84, 108].forEach(step => {
+        peaksSq.addNote(step, 76 + Math.floor(Math.random() * 8), 35, 6);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 14: Aurora Borealis
+// ============================================
+async function setupAuroraBorealis(manager: ChannelManager): Promise<void> {
+    manager.setBpm(44);
+
+    const bass = await manager.createChannel('Arctic Base');
+    bass.getSynth().setParams({
+        osc1Level: 0.9, osc2Level: 0.4, osc2Semitone: 12,
+        filterCutoff: 180, ampAttack: 4, ampSustain: 1, ampRelease: 5,
+        longReverbDecay: 14, longReverbDryWet: 0.35
+    });
+    bass.volume = 0.55;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [30, 35, 32, 30].forEach((note, i) => bassSq.addNote(i * 32, note, 55, 28));
+
+    const aurora = await manager.createChannel('Aurora');
+    aurora.getSynth().setParams({
+        osc1Level: 0.5, osc1Detune: -6, osc2Level: 0.5, osc2Detune: 6,
+        osc3Level: 0.4, osc3Semitone: 12, osc3Detune: 3,
+        filterCutoff: 1100, filterRes: 0.12,
+        lfo1Rate: 0.06, lfo1Amount: 0.35, lfo1Target: 'filter',
+        ampAttack: 5, ampSustain: 0.6, ampRelease: 7,
+        chorusMix: 0.5, longReverbDecay: 16, longReverbDryWet: 0.55
+    });
+    aurora.volume = 0.45;
+    const auroraSq = aurora.getSequencer();
+    auroraSq.clearAll();
+    [[54, 58, 61, 66], [47, 51, 54, 59], [49, 53, 56, 61], [54, 58, 61, 66]].forEach((ch, i) => {
+        ch.forEach((n, j) => auroraSq.addNote(i * 32 + j * 3, n, 48, 26));
+    });
+
+    const sparkle = await manager.createChannel('Ice Crystals');
+    sparkle.getSynth().setParams({
+        osc1Level: 0.5, filterCutoff: 3500,
+        ampAttack: 0.1, ampDecay: 2, ampSustain: 0, ampRelease: 4,
+        longReverbDecay: 20, longReverbDryWet: 0.8
+    });
+    sparkle.volume = 0.22;
+    sparkle.pan = 0.3;
+    const sparkSq = sparkle.getSequencer();
+    sparkSq.clearAll();
+    [6, 18, 34, 50, 66, 82, 98, 114].forEach(step => {
+        sparkSq.addNote(step, 82 + Math.floor(Math.random() * 10), 38, 3);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 15: Zen Garden
+// ============================================
+async function setupZenGarden(manager: ChannelManager): Promise<void> {
+    manager.setBpm(40);
+
+    const bass = await manager.createChannel('Stone');
+    bass.getSynth().setParams({
+        osc1Level: 1, osc2Level: 0.5, osc2Semitone: 7,
+        filterCutoff: 200, ampAttack: 3, ampSustain: 1, ampRelease: 4,
+        longReverbDecay: 10, longReverbDryWet: 0.3
+    });
+    bass.volume = 0.55;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [33, 33, 31, 33].forEach((note, i) => bassSq.addNote(i * 32, note, 55, 28));
+
+    const koto = await manager.createChannel('Koto');
+    koto.getSynth().setParams({
+        osc1Level: 0.6, osc2Level: 0.3, osc2Semitone: 12,
+        filterCutoff: 2200, filterRes: 0.15,
+        ampAttack: 0.3, ampDecay: 4, ampSustain: 0.1, ampRelease: 6,
+        longReverbDecay: 14, longReverbDryWet: 0.55
+    });
+    koto.volume = 0.35;
+    koto.pan = 0.15;
+    const kotoSq = koto.getSequencer();
+    kotoSq.clearAll();
+    [[8, 69], [24, 72], [48, 74], [64, 72], [88, 69], [104, 67]].forEach(([step, note]) => {
+        kotoSq.addNote(step, note, 50, 8);
+    });
+
+    const wind = await manager.createChannel('Bamboo Wind');
+    wind.getSynth().setParams({
+        osc1Level: 0.3, osc2Level: 0.2, osc2Semitone: 12,
+        noiseType: 'pink', noiseLevel: 0.05,
+        filterCutoff: 1400, lfo1Rate: 0.06, lfo1Amount: 0.3,
+        ampAttack: 6, ampSustain: 0.4, ampRelease: 7,
+        longReverbDecay: 12, longReverbDryWet: 0.5
+    });
+    wind.volume = 0.25;
+    wind.pan = -0.2;
+    const windSq = wind.getSequencer();
+    windSq.clearAll();
+    windSq.addNote(0, 67, 30, 55);
+    windSq.addNote(64, 69, 25, 55);
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 16: Desert Night
+// ============================================
+async function setupDesertNight(manager: ChannelManager): Promise<void> {
+    manager.setBpm(48);
+
+    const bass = await manager.createChannel('Sand Dunes');
+    bass.getSynth().setParams({
+        osc1Level: 1, osc2Level: 0.4, osc2Semitone: 12,
+        filterCutoff: 170, ampAttack: 3.5, ampSustain: 1, ampRelease: 4.5,
+        longReverbDecay: 12, longReverbDryWet: 0.3
+    });
+    bass.volume = 0.58;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [29, 34, 32, 29].forEach((note, i) => bassSq.addNote(i * 32, note, 58, 28));
+
+    const pad = await manager.createChannel('Night Sky');
+    pad.getSynth().setParams({
+        osc1Level: 0.55, osc1Detune: -5, osc2Level: 0.55, osc2Detune: 5,
+        filterCutoff: 650, ampAttack: 5, ampSustain: 0.65, ampRelease: 6,
+        chorusMix: 0.4, longReverbDecay: 14, longReverbDryWet: 0.45
+    });
+    pad.volume = 0.48;
+    const padSq = pad.getSequencer();
+    padSq.clearAll();
+    [[53, 56, 60, 65], [46, 50, 53, 58], [48, 51, 55, 60], [53, 56, 60, 65]].forEach((ch, i) => {
+        ch.forEach((n, j) => padSq.addNote(i * 32 + j * 2, n, 48, 26));
+    });
+
+    const stars = await manager.createChannel('Desert Stars');
+    stars.getSynth().setParams({
+        osc1Level: 0.45, filterCutoff: 2800,
+        ampAttack: 0.2, ampDecay: 2.5, ampSustain: 0, ampRelease: 5,
+        longReverbDecay: 18, longReverbDryWet: 0.7
+    });
+    stars.volume = 0.23;
+    stars.pan = 0.25;
+    const starsSq = stars.getSequencer();
+    starsSq.clearAll();
+    [10, 26, 46, 62, 78, 94, 110].forEach(step => {
+        starsSq.addNote(step, 77 + Math.floor(Math.random() * 12), 38, 4);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 17: Coral Reef
+// ============================================
+async function setupCoralReef(manager: ChannelManager): Promise<void> {
+    manager.setBpm(52);
+
+    const bass = await manager.createChannel('Ocean Floor');
+    bass.getSynth().setParams({
+        osc1Level: 0.9, osc2Level: 0.45, osc2Semitone: 12,
+        filterCutoff: 190, ampAttack: 3, ampSustain: 1, ampRelease: 4,
+        longReverbDecay: 10, longReverbDryWet: 0.3
+    });
+    bass.volume = 0.55;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [31, 36, 34, 31].forEach((note, i) => bassSq.addNote(i * 32, note, 55, 28));
+
+    const coral = await manager.createChannel('Coral');
+    coral.getSynth().setParams({
+        osc1Level: 0.5, osc1Detune: -4, osc2Level: 0.5, osc2Detune: 4,
+        osc3Level: 0.35, osc3Semitone: 12,
+        filterCutoff: 850, filterRes: 0.1,
+        ampAttack: 4, ampSustain: 0.6, ampRelease: 5,
+        chorusMix: 0.45, longReverbDecay: 12, longReverbDryWet: 0.5
+    });
+    coral.volume = 0.45;
+    coral.pan = -0.15;
+    const coralSq = coral.getSequencer();
+    coralSq.clearAll();
+    [[55, 58, 62, 67], [48, 52, 55, 60], [50, 53, 57, 62], [55, 58, 62, 67]].forEach((ch, i) => {
+        ch.forEach((n, j) => coralSq.addNote(i * 32 + j * 3, n, 48, 26));
+    });
+
+    const fish = await manager.createChannel('Tropical Fish');
+    fish.getSynth().setParams({
+        osc1Level: 0.5, filterCutoff: 2000,
+        ampAttack: 0.3, ampDecay: 2, ampSustain: 0.1, ampRelease: 3,
+        longReverbDecay: 14, longReverbDryWet: 0.6
+    });
+    fish.volume = 0.28;
+    fish.pan = 0.2;
+    const fishSq = fish.getSequencer();
+    fishSq.clearAll();
+    [[6, 74], [18, 77], [38, 79], [54, 77], [70, 74], [86, 72], [102, 74], [118, 77]].forEach(([step, note]) => {
+        fishSq.addNote(step, note, 45, 5);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 18: Twilight Meadow
+// ============================================
+async function setupTwilightMeadow(manager: ChannelManager): Promise<void> {
+    manager.setBpm(54);
+
+    const bass = await manager.createChannel('Earth');
+    bass.getSynth().setParams({
+        osc1Level: 1, osc2Level: 0.35, osc2Semitone: 12,
+        filterCutoff: 210, ampAttack: 2.5, ampSustain: 0.9, ampRelease: 3.5,
+        longReverbDecay: 8, longReverbDryWet: 0.2
+    });
+    bass.volume = 0.6;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [36, 33, 31, 36].forEach((note, i) => bassSq.addNote(i * 32, note, 58, 28));
+
+    const pad = await manager.createChannel('Meadow Grass');
+    pad.getSynth().setParams({
+        osc1Level: 0.55, osc1Detune: -5, osc2Level: 0.55, osc2Detune: 5,
+        filterCutoff: 750, ampAttack: 4, ampSustain: 0.6, ampRelease: 5,
+        chorusMix: 0.35, longReverbDecay: 10, longReverbDryWet: 0.4
+    });
+    pad.volume = 0.48;
+    const padSq = pad.getSequencer();
+    padSq.clearAll();
+    [[60, 64, 67, 72], [57, 60, 64, 69], [55, 59, 62, 67], [60, 64, 67, 72]].forEach((ch, i) => {
+        ch.forEach((n, j) => padSq.addNote(i * 32 + j * 2, n, 50, 26));
+    });
+
+    const fireflies = await manager.createChannel('Fireflies');
+    fireflies.getSynth().setParams({
+        osc1Level: 0.45, filterCutoff: 2400,
+        ampAttack: 0.2, ampDecay: 1.8, ampSustain: 0, ampRelease: 3.5,
+        longReverbDecay: 16, longReverbDryWet: 0.65
+    });
+    fireflies.volume = 0.25;
+    fireflies.pan = 0.2;
+    const ffSq = fireflies.getSequencer();
+    ffSq.clearAll();
+    [4, 16, 32, 48, 64, 80, 96, 112].forEach(step => {
+        ffSq.addNote(step, 79 + Math.floor(Math.random() * 8), 42, 4);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 19: Lunar Eclipse
+// ============================================
+async function setupLunarEclipse(manager: ChannelManager): Promise<void> {
+    manager.setBpm(34);
+
+    const drone = await manager.createChannel('Eclipse Drone');
+    drone.getSynth().setParams({
+        osc1Level: 1, osc2Level: 0.6, osc2Semitone: 7, osc2Detune: 2,
+        osc3Level: 0.4, osc3Semitone: 12,
+        filterCutoff: 320, ampAttack: 8, ampSustain: 1, ampRelease: 10,
+        longReverbDecay: 22, longReverbDryWet: 0.5
+    });
+    drone.volume = 0.55;
+    const droneSq = drone.getSequencer();
+    droneSq.clearAll();
+    droneSq.addNote(0, 26, 55, 60);
+    droneSq.addNote(64, 28, 50, 60);
+
+    const shadow = await manager.createChannel('Moon Shadow');
+    shadow.getSynth().setParams({
+        osc1Level: 0.5, osc1Detune: -8, osc2Level: 0.5, osc2Detune: 8,
+        filterCutoff: 600, lfo1Rate: 0.03, lfo1Amount: 0.25, lfo1Target: 'filter',
+        ampAttack: 7, ampSustain: 0.5, ampRelease: 9,
+        chorusMix: 0.5, longReverbDecay: 18, longReverbDryWet: 0.6
+    });
+    shadow.volume = 0.4;
+    shadow.pan = -0.15;
+    const shadowSq = shadow.getSequencer();
+    shadowSq.clearAll();
+    [[50, 53, 57], [45, 48, 52]].forEach((ch, i) => {
+        ch.forEach((n, j) => shadowSq.addNote(i * 64 + j * 6, n, 42, 55));
+    });
+
+    const corona = await manager.createChannel('Corona');
+    corona.getSynth().setParams({
+        osc1Level: 0.4, osc2Level: 0.3, osc2Semitone: 19,
+        filterCutoff: 1800, ampAttack: 1.5, ampDecay: 6, ampSustain: 0.1, ampRelease: 8,
+        longReverbDecay: 24, longReverbDryWet: 0.8
+    });
+    corona.volume = 0.18;
+    corona.pan = 0.2;
+    const coronaSq = corona.getSequencer();
+    coronaSq.clearAll();
+    [16, 40, 72, 96].forEach(step => {
+        coronaSq.addNote(step, 74 + Math.floor(Math.random() * 10), 32, 8);
+    });
+
+    manager.setLength(128);
+}
+
+// ============================================
+// Preset 20: Inner Peace
+// ============================================
+async function setupInnerPeace(manager: ChannelManager): Promise<void> {
+    manager.setBpm(46);
+
+    const bass = await manager.createChannel('Foundation');
+    bass.getSynth().setParams({
+        osc1Level: 1, osc2Level: 0.45, osc2Semitone: 12,
+        filterCutoff: 180, ampAttack: 3.5, ampSustain: 1, ampRelease: 4.5,
+        longReverbDecay: 10, longReverbDryWet: 0.25
+    });
+    bass.volume = 0.58;
+    const bassSq = bass.getSequencer();
+    bassSq.clearAll();
+    [33, 36, 33, 31].forEach((note, i) => bassSq.addNote(i * 32, note, 55, 28));
+
+    const peace = await manager.createChannel('Serenity');
+    peace.getSynth().setParams({
+        osc1Level: 0.55, osc1Detune: -4, osc2Level: 0.55, osc2Detune: 4,
+        osc3Level: 0.35, osc3Semitone: 12,
+        filterCutoff: 700, ampAttack: 5, ampSustain: 0.65, ampRelease: 6,
+        chorusMix: 0.4, longReverbDecay: 12, longReverbDryWet: 0.45
+    });
+    peace.volume = 0.48;
+    const peaceSq = peace.getSequencer();
+    peaceSq.clearAll();
+    [[57, 60, 64, 69], [48, 52, 55, 60], [53, 57, 60, 65], [57, 60, 64, 69]].forEach((ch, i) => {
+        ch.forEach((n, j) => peaceSq.addNote(i * 32 + j * 2, n, 48, 26));
+    });
+
+    const breath = await manager.createChannel('Breath');
+    breath.getSynth().setParams({
+        osc1Level: 0.35, osc2Level: 0.25, osc2Semitone: 12,
+        noiseType: 'pink', noiseLevel: 0.03,
+        filterCutoff: 1000, lfo1Rate: 0.08, lfo1Amount: 0.2,
+        ampAttack: 4, ampSustain: 0.4, ampRelease: 5,
+        longReverbDecay: 14, longReverbDryWet: 0.5
+    });
+    breath.volume = 0.22;
+    breath.pan = 0.1;
+    const breathSq = breath.getSequencer();
+    breathSq.clearAll();
+    breathSq.addNote(0, 69, 30, 55);
+    breathSq.addNote(64, 72, 25, 55);
+
+    manager.setLength(128);
+}
+
+// ============================================
 // Export all presets
 // ============================================
 export const MUSIC_PRESETS: MusicPreset[] = [
@@ -680,6 +1169,86 @@ export const MUSIC_PRESETS: MusicPreset[] = [
         bpm: 38,
         length: 128,
         setup: setupEternalHorizon
+    },
+    {
+        id: 'healing-waters',
+        name: 'Healing Waters',
+        description: 'Gentle therapeutic waters - G major flowing',
+        bpm: 42,
+        length: 128,
+        setup: setupHealingWaters
+    },
+    {
+        id: 'winter-cabin',
+        name: 'Winter Cabin',
+        description: 'Cozy warmth by the fire - A minor cozy',
+        bpm: 50,
+        length: 128,
+        setup: setupWinterCabin
+    },
+    {
+        id: 'misty-mountains',
+        name: 'Misty Mountains',
+        description: 'Ancient peaks in fog - E minor mystical',
+        bpm: 36,
+        length: 128,
+        setup: setupMistyMountains
+    },
+    {
+        id: 'aurora-borealis',
+        name: 'Aurora Borealis',
+        description: 'Northern lights dancing - F# minor shimmering',
+        bpm: 44,
+        length: 128,
+        setup: setupAuroraBorealis
+    },
+    {
+        id: 'zen-garden',
+        name: 'Zen Garden',
+        description: 'Japanese tranquility - A minor meditative',
+        bpm: 40,
+        length: 128,
+        setup: setupZenGarden
+    },
+    {
+        id: 'desert-night',
+        name: 'Desert Night',
+        description: 'Starlit desert serenity - F minor exotic',
+        bpm: 48,
+        length: 128,
+        setup: setupDesertNight
+    },
+    {
+        id: 'coral-reef',
+        name: 'Coral Reef',
+        description: 'Underwater paradise - G major aquatic',
+        bpm: 52,
+        length: 128,
+        setup: setupCoralReef
+    },
+    {
+        id: 'twilight-meadow',
+        name: 'Twilight Meadow',
+        description: 'Evening grasslands - C major pastoral',
+        bpm: 54,
+        length: 128,
+        setup: setupTwilightMeadow
+    },
+    {
+        id: 'lunar-eclipse',
+        name: 'Lunar Eclipse',
+        description: 'Celestial shadow dance - D minor mysterious',
+        bpm: 34,
+        length: 128,
+        setup: setupLunarEclipse
+    },
+    {
+        id: 'inner-peace',
+        name: 'Inner Peace',
+        description: 'Deep meditation state - A minor serene',
+        bpm: 46,
+        length: 128,
+        setup: setupInnerPeace
     }
 ];
 

@@ -24,6 +24,7 @@ let jitaiVisualization: JitaiVisualization | null = null;
 let masterSection: MasterSection | null = null;
 let synthPopup: HTMLElement | null = null;
 let currentPresetName: string = 'Sleep Drone';  // Track current preset name
+let currentPresetIndex: number = -1;  // -1 means Sleep Drone (default), 0-19 for MUSIC_PRESETS
 const knobs: Map<string, RotaryKnob> = new Map();
 
 // Keyboard mapping (computer keyboard to MIDI notes)
@@ -664,6 +665,8 @@ function setupPresets(): void {
     // Save/Load project buttons
     const saveBtn = document.getElementById('project-save');
     const loadBtn = document.getElementById('project-load');
+    const prevBtn = document.getElementById('preset-prev');
+    const nextBtn = document.getElementById('preset-next');
 
     saveBtn?.addEventListener('click', () => {
         channelManager.saveToLocalStorage();
@@ -673,6 +676,16 @@ function setupPresets(): void {
     // Load button - show music preset modal
     loadBtn?.addEventListener('click', () => {
         openPresetModal();
+    });
+
+    // Previous preset button
+    prevBtn?.addEventListener('click', () => {
+        navigatePreset(-1);
+    });
+
+    // Next preset button
+    nextBtn?.addEventListener('click', () => {
+        navigatePreset(1);
     });
 }
 
@@ -729,8 +742,9 @@ function openPresetModal(): void {
 
             await loadMusicPreset(channelManager, preset.id);
 
-            // Update current preset name
+            // Update current preset name and index
             currentPresetName = preset.name;
+            currentPresetIndex = MUSIC_PRESETS.findIndex(p => p.id === preset.id);
             updatePresetNameDisplay();
 
             // Re-render UI
@@ -778,6 +792,61 @@ function updatePresetNameDisplay(): void {
     if (displayEl) {
         displayEl.textContent = currentPresetName;
     }
+}
+
+/**
+ * Navigate to previous or next preset
+ */
+async function navigatePreset(direction: number): Promise<void> {
+    // Calculate new index (-1 to 19, wrapping around)
+    // -1 = Sleep Drone, 0-19 = MUSIC_PRESETS
+    let newIndex = currentPresetIndex + direction;
+    if (newIndex < -1) {
+        newIndex = MUSIC_PRESETS.length - 1;  // Wrap to last preset
+    } else if (newIndex >= MUSIC_PRESETS.length) {
+        newIndex = -1;  // Wrap to Sleep Drone
+    }
+
+    currentPresetIndex = newIndex;
+
+    if (currentPresetIndex === -1) {
+        // Load Sleep Drone (default)
+        showNotification('Loading Sleep Drone...');
+        const { generateDroneProject } = await import('./utils/droneGenerator');
+        await generateDroneProject(channelManager);
+        currentPresetName = 'Sleep Drone';
+    } else {
+        // Load from MUSIC_PRESETS
+        const preset = MUSIC_PRESETS[currentPresetIndex];
+        showNotification(`Loading ${preset.name}...`);
+        await loadMusicPreset(channelManager, preset.id);
+        currentPresetName = preset.name;
+    }
+
+    updatePresetNameDisplay();
+
+    // Re-render UI
+    channelStripUI.render();
+    const selectedChannel = channelManager.getSelectedChannel();
+    if (selectedChannel) {
+        setupPianoRollForChannel(selectedChannel);
+        updateSynthControlsForChannel(selectedChannel);
+    }
+
+    // Update BPM display
+    const bpmInput = document.getElementById('bpm') as HTMLInputElement;
+    if (bpmInput) {
+        if (currentPresetIndex === -1) {
+            bpmInput.value = '60';
+        } else {
+            bpmInput.value = String(MUSIC_PRESETS[currentPresetIndex].bpm);
+        }
+    }
+
+    // Auto-play
+    channelManager.play();
+
+    showNotification(`${currentPresetName} loaded!`);
 }
 
 /**
