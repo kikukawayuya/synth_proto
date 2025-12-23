@@ -69,8 +69,8 @@ export const masterSectionStyles = `
 
 .master-volume-container {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .master-volume-slider {
@@ -97,8 +97,7 @@ export const masterSectionStyles = `
     font-size: 14px;
     font-weight: 600;
     color: #4a90b8;
-    min-width: 40px;
-    text-align: right;
+    text-align: center;
     font-family: 'SF Mono', monospace;
 }
 
@@ -245,8 +244,8 @@ export class MasterSection {
                     <div class="master-volume-label">Volume</div>
                     <div class="master-volume-container">
                         <input type="range" class="master-volume-slider" min="0" max="4" step="0.01" value="1.5">
-                        <span class="master-volume-value">150%</span>
                     </div>
+                    <span class="master-volume-value">150%</span>
                 </div>
 
                 <div class="master-eq-section">

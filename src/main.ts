@@ -12,6 +12,7 @@ import { ChannelStripUI, channelStripStyles } from './ui/ChannelStrip';
 import { JitaiController, JitaiPanel, jitaiPanelStyles } from './jitai';
 import { MasterSection, masterSectionStyles } from './ui/MasterSection';
 import { JitaiVisualization, jitaiVisualizationStyles } from './ui/JitaiVisualization';
+import { MUSIC_PRESETS, loadMusicPreset } from './presets/MusicPresets';
 
 // Global instances
 let channelManager: ChannelManager;
@@ -103,6 +104,112 @@ const synthPopupStyles = `
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
+}
+
+/* Music Preset Modal */
+.preset-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preset-modal {
+    background: linear-gradient(135deg, #1a2530 0%, #0d1520 100%);
+    border: 1px solid #3a5570;
+    border-radius: 16px;
+    padding: 24px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: #c8d4e0;
+}
+
+.preset-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #3a5570;
+}
+
+.preset-modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #4a90b8;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.preset-modal-close {
+    background: none;
+    border: none;
+    color: #6a8aa8;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+}
+
+.preset-modal-close:hover {
+    color: #e06040;
+}
+
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.preset-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #2a3540;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-card:hover {
+    background: rgba(74, 144, 184, 0.15);
+    border-color: #4a90b8;
+    transform: translateY(-2px);
+}
+
+.preset-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e0e8f0;
+    margin-bottom: 8px;
+}
+
+.preset-card-description {
+    font-size: 12px;
+    color: #7a8a9a;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+.preset-card-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: #5a6a7a;
+}
+
+.preset-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 `;
 
@@ -562,20 +669,100 @@ function setupPresets(): void {
         showNotification('Project saved!');
     });
 
-    loadBtn?.addEventListener('click', async () => {
-        if (channelManager.hasSavedData()) {
-            await channelManager.loadFromLocalStorage();
+    // Load button - show music preset modal
+    loadBtn?.addEventListener('click', () => {
+        openPresetModal();
+    });
+}
+
+/**
+ * Open music preset selection modal
+ */
+function openPresetModal(): void {
+    // Close existing modal
+    closePresetModal();
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'preset-modal-overlay';
+    overlay.id = 'preset-modal-overlay';
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closePresetModal();
+    });
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'preset-modal';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'preset-modal-header';
+    header.innerHTML = `
+        <div class="preset-modal-title">
+            <span>🎵</span>
+            <span>Sleep & Relaxation Presets</span>
+        </div>
+        <button class="preset-modal-close">&times;</button>
+    `;
+    header.querySelector('.preset-modal-close')?.addEventListener('click', closePresetModal);
+    modal.appendChild(header);
+
+    // Preset grid
+    const grid = document.createElement('div');
+    grid.className = 'preset-grid';
+
+    MUSIC_PRESETS.forEach(preset => {
+        const card = document.createElement('div');
+        card.className = 'preset-card';
+        card.innerHTML = `
+            <div class="preset-card-name">${preset.name}</div>
+            <div class="preset-card-description">${preset.description}</div>
+            <div class="preset-card-meta">
+                <span>♩ ${preset.bpm} BPM</span>
+                <span>⎯ ${preset.length} steps</span>
+            </div>
+        `;
+        card.addEventListener('click', async () => {
+            closePresetModal();
+            showNotification(`Loading ${preset.name}...`);
+
+            await loadMusicPreset(channelManager, preset.id);
+
+            // Re-render UI
             channelStripUI.render();
             const selectedChannel = channelManager.getSelectedChannel();
             if (selectedChannel) {
                 setupPianoRollForChannel(selectedChannel);
                 updateSynthControlsForChannel(selectedChannel);
             }
-            showNotification('Project loaded!');
-        } else {
-            showNotification('No saved project found');
-        }
+
+            // Update BPM display
+            const bpmInput = document.getElementById('bpm') as HTMLInputElement;
+            if (bpmInput) {
+                bpmInput.value = String(preset.bpm);
+            }
+
+            // Auto-play
+            channelManager.play();
+
+            showNotification(`${preset.name} loaded!`);
+        });
+        grid.appendChild(card);
     });
+
+    modal.appendChild(grid);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+/**
+ * Close preset modal
+ */
+function closePresetModal(): void {
+    const overlay = document.getElementById('preset-modal-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
 }
 
 /**
