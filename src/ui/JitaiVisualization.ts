@@ -15,14 +15,40 @@ export const jitaiVisualizationStyles = `
     font-family: 'SF Pro Display', -apple-system, sans-serif;
 }
 
+.jitai-viz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
 .jitai-viz-title {
     font-size: 16px;
     font-weight: 600;
     color: #4a90b8;
-    margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.jitai-viz-preset-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e0e8f0;
+    background: rgba(74, 144, 184, 0.2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid #3a5570;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.jitai-viz-preset-label {
+    font-size: 10px;
+    color: #6a8aa8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .jitai-viz-grid {
@@ -193,9 +219,9 @@ const VISUALIZATION_CARDS: VisualizationCard[] = [
         unit: 'Hz',
         barClass: 'filter',
         description: 'リラックス度が上がると暗い音色に',
-        getValue: (_, relaxation) => Math.max(400, 2000 - relaxation * 1600),
+        getValue: (_, relaxation) => Math.max(600, 1800 - relaxation * 1200),
         getDisplay: (v) => Math.round(v).toString(),
-        getPercentage: (v) => ((v - 400) / 1600) * 100
+        getPercentage: (v) => ((v - 600) / 1200) * 100
     },
     {
         id: 'lfoRate',
@@ -203,9 +229,9 @@ const VISUALIZATION_CARDS: VisualizationCard[] = [
         unit: 'Hz',
         barClass: 'lfo',
         description: 'リラックス度が上がるとゆらぎがゆっくり',
-        getValue: (_, relaxation) => 0.05 + (1 - relaxation) * 0.15,
+        getValue: (_, relaxation) => 0.1 + (1 - relaxation) * 0.2,
         getDisplay: (v) => v.toFixed(2),
-        getPercentage: (v) => ((v - 0.05) / 0.15) * 100
+        getPercentage: (v) => ((v - 0.1) / 0.2) * 100
     },
     {
         id: 'attack',
@@ -213,9 +239,9 @@ const VISUALIZATION_CARDS: VisualizationCard[] = [
         unit: 's',
         barClass: 'envelope',
         description: '眠気に応じてアタックが長く柔らかく',
-        getValue: (_, __, sleepiness) => 1 + sleepiness * 8,
+        getValue: (_, __, sleepiness) => 1 + sleepiness * 5,
         getDisplay: (v) => v.toFixed(1),
-        getPercentage: (v) => ((v - 1) / 8) * 100
+        getPercentage: (v) => ((v - 1) / 5) * 100
     },
     {
         id: 'release',
@@ -223,9 +249,9 @@ const VISUALIZATION_CARDS: VisualizationCard[] = [
         unit: 's',
         barClass: 'envelope',
         description: '眠気に応じてリリースが長く残響感',
-        getValue: (_, __, sleepiness) => 2 + sleepiness * 10,
+        getValue: (_, __, sleepiness) => 2 + sleepiness * 6,
         getDisplay: (v) => v.toFixed(1),
-        getPercentage: (v) => ((v - 2) / 10) * 100
+        getPercentage: (v) => ((v - 2) / 6) * 100
     },
     {
         id: 'reverb',
@@ -233,9 +259,9 @@ const VISUALIZATION_CARDS: VisualizationCard[] = [
         unit: '%',
         barClass: 'reverb',
         description: '眠気に応じて空間が広く深く',
-        getValue: (_, __, sleepiness) => (0.2 + sleepiness * 0.4) * 100,
+        getValue: (_, __, sleepiness) => (0.15 + sleepiness * 0.25) * 100,
         getDisplay: (v) => Math.round(v).toString(),
-        getPercentage: (v) => ((v - 20) / 40) * 100
+        getPercentage: (v) => ((v - 15) / 25) * 100
     },
     {
         id: 'bpm',
@@ -274,9 +300,15 @@ export class JitaiVisualization {
 
     private render(): void {
         this.container.innerHTML = `
-            <div class="jitai-viz-title">
-                <span>🎵</span>
-                <span>JITAI Audio Parameters</span>
+            <div class="jitai-viz-header">
+                <div class="jitai-viz-title">
+                    <span>🎵</span>
+                    <span>JITAI Audio Parameters</span>
+                </div>
+                <div class="jitai-viz-preset-name">
+                    <span class="jitai-viz-preset-label">Preset:</span>
+                    <span id="current-preset-name">Sleep Drone</span>
+                </div>
             </div>
             <div class="jitai-viz-grid" id="jitai-viz-grid">
                 ${VISUALIZATION_CARDS.map(card => `

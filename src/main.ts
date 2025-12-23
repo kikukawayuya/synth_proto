@@ -23,6 +23,7 @@ let jitaiPanel: JitaiPanel | null = null;
 let jitaiVisualization: JitaiVisualization | null = null;
 let masterSection: MasterSection | null = null;
 let synthPopup: HTMLElement | null = null;
+let currentPresetName: string = 'Sleep Drone';  // Track current preset name
 const knobs: Map<string, RotaryKnob> = new Map();
 
 // Keyboard mapping (computer keyboard to MIDI notes)
@@ -728,6 +729,10 @@ function openPresetModal(): void {
 
             await loadMusicPreset(channelManager, preset.id);
 
+            // Update current preset name
+            currentPresetName = preset.name;
+            updatePresetNameDisplay();
+
             // Re-render UI
             channelStripUI.render();
             const selectedChannel = channelManager.getSelectedChannel();
@@ -762,6 +767,16 @@ function closePresetModal(): void {
     const overlay = document.getElementById('preset-modal-overlay');
     if (overlay) {
         overlay.remove();
+    }
+}
+
+/**
+ * Update preset name display
+ */
+function updatePresetNameDisplay(): void {
+    const displayEl = document.getElementById('current-preset-name');
+    if (displayEl) {
+        displayEl.textContent = currentPresetName;
     }
 }
 
